@@ -24,7 +24,7 @@ function AuthForm() {
     setLoading(true)
 
     if (mode === 'register') {
-      const { data, error: err } = await supabase.auth.signUp({ email, password })
+     const { data, error: err } = await supabase.auth.signUp({ email, password, options: { data: { username } } })
       if (err) { setError(t.registerError); setLoading(false); return }
       if (data.user) {
         await supabase.from('profiles').insert({ id: data.user.id, username })
