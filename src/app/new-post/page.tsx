@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 
@@ -9,6 +9,7 @@ type Category = { id: number; name: string }
 export default function NewPostPage() {
   const { t } = useApp()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState<number | ''>('')
@@ -18,11 +19,14 @@ export default function NewPostPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    const preselected = searchParams.get('category')
+    if (preselected) setCategoryId(Number(preselected))
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) router.push('/auth')
       else setUser(data.user)
     })
     supabase.from('categories').select('id, name').then(({ data }) => setCategories(data || []))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +37,8 @@ export default function NewPostPage() {
       title, content, category_id: categoryId, user_id: user.id
     }).select().single()
     if (!error && data) {
-      await supabase.from('categories').update({ post_count: supabase.rpc as any }).eq('id', categoryId)
+      const { data: cat } = await supabase.from('categories').select('post_count').eq('id', categoryId).single()
+      if (cat) await supabase.from('categories').update({ post_count: cat.post_count + 1 }).eq('id', categoryId)
       router.push(`/post/${data.id}`)
     }
     setLoading(false)

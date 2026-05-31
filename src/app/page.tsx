@@ -68,7 +68,7 @@ export default function HomePage() {
             {loading ? (
               <div className="p-8 text-center text-gray-400">{t.loading}</div>
             ) : categories.map(cat => (
-              <Link key={cat.id} href={`/?category=${cat.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0">
+              <Link key={cat.id} href={`/category/${cat.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0">
                 <div className="w-10 h-10 bg-brand-50 dark:bg-brand-900/30 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
                   {CATEGORY_ICONS[cat.icon] || '♠'}
                 </div>
