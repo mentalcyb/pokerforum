@@ -5,18 +5,29 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 
+const ICON_OPTIONS = ['spade', 'trophy', 'money', 'dice', 'book', 'brain']
+const ICON_MAP: Record<string, string> = {
+  spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
+}
+
 interface UserRow { id: string; username: string; is_admin: boolean; created_at: string }
 interface PostRow { id: number; title: string; content: string; created_at: string; profiles: { username: string } | null; categories: { name: string } | null }
-interface EditState { id: number; title: string; content: string }
+interface CategoryRow { id: number; name: string; description: string; icon: string; post_count: number }
+interface PostEditState { id: number; title: string; content: string }
+interface CatEditState { id: number; name: string; description: string; icon: string }
+interface NewCatState { name: string; description: string; icon: string }
 
 export default function AdminPage() {
   const { t } = useApp()
   const router = useRouter()
   const [users, setUsers] = useState<UserRow[]>([])
   const [posts, setPosts] = useState<PostRow[]>([])
-  const [tab, setTab] = useState<'posts' | 'users'>('posts')
+  const [categories, setCategories] = useState<CategoryRow[]>([])
+  const [tab, setTab] = useState<'posts' | 'users' | 'categories'>('posts')
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<EditState | null>(null)
+  const [postEditing, setPostEditing] = useState<PostEditState | null>(null)
+  const [catEditing, setCatEditing] = useState<CatEditState | null>(null)
+  const [newCat, setNewCat] = useState<NewCatState | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
@@ -30,30 +41,24 @@ export default function AdminPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/'); return }
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
+      .from('profiles').select('is_admin').eq('id', user.id).single()
     if (!profile?.is_admin) { router.push('/'); return }
     await loadData()
   }
 
   async function loadData() {
-    const [{ data: p }, { data: u }] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('id, title, content, created_at, profiles(username), categories(name)')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('profiles')
-        .select('id, username, is_admin, created_at')
-        .order('created_at', { ascending: false }),
+    const [{ data: p }, { data: u }, { data: c }] = await Promise.all([
+      supabase.from('posts').select('id, title, content, created_at, profiles(username), categories(name)').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, username, is_admin, created_at').order('created_at', { ascending: false }),
+      supabase.from('categories').select('*').order('id'),
     ])
     setPosts((p as unknown as PostRow[]) ?? [])
     setUsers((u as unknown as UserRow[]) ?? [])
+    setCategories((c as unknown as CategoryRow[]) ?? [])
     setLoading(false)
   }
 
+  // --- Posts ---
   async function deletePost(id: number) {
     if (!confirm('პოსტი წაიშლება. დარწმუნებული ხარ?')) return
     setError(null)
@@ -64,22 +69,48 @@ export default function AdminPage() {
     setPosts(prev => prev.filter(p => p.id !== id))
   }
 
-  async function saveEdit() {
-    if (!editing) return
-    setError(null)
-    setSaving(true)
-    const { error: e } = await supabase
-      .from('posts')
-      .update({ title: editing.title, content: editing.content })
-      .eq('id', editing.id)
+  async function savePostEdit() {
+    if (!postEditing) return
+    setError(null); setSaving(true)
+    const { error: e } = await supabase.from('posts')
+      .update({ title: postEditing.title, content: postEditing.content }).eq('id', postEditing.id)
     if (e) { setError(`update error: ${e.message}`); setSaving(false); return }
-    setPosts(prev => prev.map(p =>
-      p.id === editing.id ? { ...p, title: editing.title, content: editing.content } : p
-    ))
-    setEditing(null)
-    setSaving(false)
+    setPosts(prev => prev.map(p => p.id === postEditing.id ? { ...p, ...postEditing } : p))
+    setPostEditing(null); setSaving(false)
   }
 
+  // --- Categories ---
+  async function saveCatEdit() {
+    if (!catEditing) return
+    setError(null); setSaving(true)
+    const { error: e } = await supabase.from('categories')
+      .update({ name: catEditing.name, description: catEditing.description, icon: catEditing.icon })
+      .eq('id', catEditing.id)
+    if (e) { setError(`category update error: ${e.message}`); setSaving(false); return }
+    setCategories(prev => prev.map(c => c.id === catEditing.id ? { ...c, ...catEditing } : c))
+    setCatEditing(null); setSaving(false)
+  }
+
+  async function deleteCategory(id: number) {
+    if (!confirm('კატეგორია წაიშლება. ყველა პოსტი დარჩება მაგრამ კატეგორიის გარეშე.')) return
+    setError(null)
+    const { error: e } = await supabase.from('categories').delete().eq('id', id)
+    if (e) { setError(`category delete error: ${e.message}`); return }
+    setCategories(prev => prev.filter(c => c.id !== id))
+  }
+
+  async function createCategory() {
+    if (!newCat || !newCat.name.trim()) return
+    setError(null); setSaving(true)
+    const { data, error: e } = await supabase.from('categories')
+      .insert({ name: newCat.name, description: newCat.description, icon: newCat.icon, post_count: 0 })
+      .select().single()
+    if (e) { setError(`create error: ${e.message}`); setSaving(false); return }
+    setCategories(prev => [...prev, data as unknown as CategoryRow])
+    setNewCat(null); setSaving(false)
+  }
+
+  // --- Users ---
   async function toggleAdmin(userId: string, current: boolean) {
     await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId)
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
@@ -94,10 +125,11 @@ export default function AdminPage() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen text-gray-400">
-      {t.loading}
-    </div>
+    <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
   )
+
+  const tabClass = (name: typeof tab) =>
+    `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === name ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'}`
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -114,51 +146,29 @@ export default function AdminPage() {
       )}
 
       <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab('posts')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'posts' ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'}`}
-        >
-          პოსტები ({posts.length})
-        </button>
-        <button
-          onClick={() => setTab('users')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'users' ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'}`}
-        >
-          მომხმარებლები ({users.length})
-        </button>
+        <button onClick={() => setTab('posts')} className={tabClass('posts')}>პოსტები ({posts.length})</button>
+        <button onClick={() => setTab('categories')} className={tabClass('categories')}>კატეგორიები ({categories.length})</button>
+        <button onClick={() => setTab('users')} className={tabClass('users')}>მომხმარებლები ({users.length})</button>
       </div>
 
+      {/* ── POSTS TAB ── */}
       {tab === 'posts' && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {posts.length === 0
             ? <div className="p-8 text-center text-gray-400">პოსტები არ არის</div>
             : posts.map(post => (
               <div key={post.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
-                {editing?.id === post.id ? (
+                {postEditing?.id === post.id ? (
                   <div className="px-5 py-4 space-y-3">
-                    <input
-                      value={editing.title}
-                      onChange={e => setEditing({ ...editing, title: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    />
-                    <textarea
-                      value={editing.content}
-                      onChange={e => setEditing({ ...editing, content: e.target.value })}
-                      rows={5}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
-                    />
+                    <input value={postEditing.title} onChange={e => setPostEditing({ ...postEditing, title: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                    <textarea value={postEditing.content} onChange={e => setPostEditing({ ...postEditing, content: e.target.value })} rows={5}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
                     <div className="flex gap-2">
-                      <button
-                        onClick={saveEdit}
-                        disabled={saving}
-                        className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors"
-                      >
+                      <button onClick={savePostEdit} disabled={saving} className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
                         {saving ? t.loading : '✓ შენახვა'}
                       </button>
-                      <button
-                        onClick={() => setEditing(null)}
-                        className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      >
+                      <button onClick={() => setPostEditing(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                         გაუქმება
                       </button>
                     </div>
@@ -167,25 +177,16 @@ export default function AdminPage() {
                   <div className="flex items-center gap-4 px-5 py-4">
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-brand-600 mb-0.5">{post.categories?.name}</div>
-                      <Link
-                        href={`/post/${post.id}`}
-                        className="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 truncate block"
-                      >
-                        {post.title}
-                      </Link>
+                      <Link href={`/post/${post.id}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 truncate block">{post.title}</Link>
                       <div className="text-xs text-gray-400 mt-0.5">{post.profiles?.username}</div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => setEditing({ id: post.id, title: post.title, content: post.content })}
-                        className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors"
-                      >
+                      <button onClick={() => setPostEditing({ id: post.id, title: post.title, content: post.content })}
+                        className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
                         ✏️ რედაქტირება
                       </button>
-                      <button
-                        onClick={() => deletePost(post.id)}
-                        className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
-                      >
+                      <button onClick={() => deletePost(post.id)}
+                        className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
                         🗑️ წაშლა
                       </button>
                     </div>
@@ -197,6 +198,123 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── CATEGORIES TAB ── */}
+      {tab === 'categories' && (
+        <div className="space-y-4">
+          {/* Create new category */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="font-medium text-gray-900 dark:text-white text-sm">კატეგორიები</h2>
+              {!newCat && (
+                <button
+                  onClick={() => setNewCat({ name: '', description: '', icon: 'spade' })}
+                  className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors"
+                >
+                  + ახალი კატეგორია
+                </button>
+              )}
+            </div>
+
+            {newCat && (
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-brand-50 dark:bg-brand-900/10 space-y-3">
+                <div className="text-xs font-medium text-brand-700 dark:text-brand-400 mb-2">ახალი კატეგორია</div>
+                <input
+                  value={newCat.name}
+                  onChange={e => setNewCat({ ...newCat, name: e.target.value })}
+                  placeholder="სახელი"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <input
+                  value={newCat.description}
+                  onChange={e => setNewCat({ ...newCat, description: e.target.value })}
+                  placeholder="აღწერა"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">ხატულა:</span>
+                  {ICON_OPTIONS.map(icon => (
+                    <button key={icon} onClick={() => setNewCat({ ...newCat, icon })}
+                      className={`w-8 h-8 rounded-lg text-base transition-colors ${newCat.icon === icon ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                      {ICON_MAP[icon]}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={createCategory} disabled={saving || !newCat.name.trim()}
+                    className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                    {saving ? t.loading : '+ შექმნა'}
+                  </button>
+                  <button onClick={() => setNewCat(null)}
+                    className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 transition-colors">
+                    გაუქმება
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {categories.length === 0
+              ? <div className="p-8 text-center text-gray-400">კატეგორიები არ არის</div>
+              : categories.map(cat => (
+                <div key={cat.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
+                  {catEditing?.id === cat.id ? (
+                    <div className="px-5 py-4 space-y-3">
+                      <input value={catEditing.name} onChange={e => setCatEditing({ ...catEditing, name: e.target.value })}
+                        placeholder="სახელი"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      <input value={catEditing.description} onChange={e => setCatEditing({ ...catEditing, description: e.target.value })}
+                        placeholder="აღწერა"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">ხატულა:</span>
+                        {ICON_OPTIONS.map(icon => (
+                          <button key={icon} onClick={() => setCatEditing({ ...catEditing, icon })}
+                            className={`w-8 h-8 rounded-lg text-base transition-colors ${catEditing.icon === icon ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                            {ICON_MAP[icon]}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={saveCatEdit} disabled={saving}
+                          className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                          {saving ? t.loading : '✓ შენახვა'}
+                        </button>
+                        <button onClick={() => setCatEditing(null)}
+                          className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          გაუქმება
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4 px-5 py-4">
+                      <div className="w-9 h-9 bg-brand-50 dark:bg-brand-900/30 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
+                        {ICON_MAP[cat.icon] || '♠'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{cat.name}</div>
+                        <div className="text-xs text-gray-400 truncate mt-0.5">{cat.description}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{cat.post_count} პოსტი</div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setCatEditing({ id: cat.id, name: cat.name, description: cat.description, icon: cat.icon })}
+                          className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
+                          ✏️ რედაქტირება
+                        </button>
+                        <button onClick={() => deleteCategory(cat.id)}
+                          className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
+                          🗑️ წაშლა
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* ── USERS TAB ── */}
       {tab === 'users' && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {users.length === 0
@@ -216,16 +334,12 @@ export default function AdminPage() {
                   <div className="text-xs text-gray-400 mt-0.5">{new Date(user.created_at).toLocaleDateString()}</div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => toggleAdmin(user.id, user.is_admin)}
-                    className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-brand-200 text-brand-600 hover:bg-brand-50'}`}
-                  >
+                  <button onClick={() => toggleAdmin(user.id, user.is_admin)}
+                    className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-brand-200 text-brand-600 hover:bg-brand-50'}`}>
                     {user.is_admin ? '👑 მოხსნა' : '👑 ადმინი'}
                   </button>
-                  <button
-                    onClick={() => deleteUser(user.id)}
-                    className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
-                  >
+                  <button onClick={() => deleteUser(user.id)}
+                    className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
                     🗑️ წაშლა
                   </button>
                 </div>
