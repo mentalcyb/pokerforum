@@ -49,8 +49,8 @@ export default function AdminPage() {
         .select('id, username, is_admin, created_at')
         .order('created_at', { ascending: false }),
     ])
-    setPosts((p as PostRow[]) ?? [])
-    setUsers((u as UserRow[]) ?? [])
+    setPosts((p as unknown as PostRow[]) ?? [])
+    setUsers((u as unknown as UserRow[]) ?? [])
     setLoading(false)
   }
 
