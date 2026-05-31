@@ -18,6 +18,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditState | null>(null)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => { checkAdmin() }, [])
@@ -42,15 +43,20 @@ export default function AdminPage() {
 
   async function deletePost(id: number) {
     if (!confirm('პოსტი წაიშლება. დარწმუნებული ხარ?')) return
-    await supabase.from('replies').delete().eq('post_id', id)
-    await supabase.from('posts').delete().eq('id', id)
+    setError(null)
+    const { error: repliesErr } = await supabase.from('replies').delete().eq('post_id', id)
+    if (repliesErr) { setError(`replies delete error: ${repliesErr.message}`); return }
+    const { error: postErr } = await supabase.from('posts').delete().eq('id', id)
+    if (postErr) { setError(`post delete error: ${postErr.message}`); return }
     setPosts(posts.filter(p => p.id !== id))
   }
 
   async function saveEdit() {
     if (!editing) return
+    setError(null)
     setSaving(true)
-    await supabase.from('posts').update({ title: editing.title, content: editing.content }).eq('id', editing.id)
+    const { error: updateErr } = await supabase.from('posts').update({ title: editing.title, content: editing.content }).eq('id', editing.id)
+    if (updateErr) { setError(`update error: ${updateErr.message}`); setSaving(false); return }
     setPosts(posts.map(p => p.id === editing.id ? { ...p, title: editing.title, content: editing.content } : p))
     setEditing(null)
     setSaving(false)
@@ -79,6 +85,13 @@ export default function AdminPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">ადმინ პანელი / Admin Panel</h1>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+          {error}
+          <button onClick={() => setError(null)} className="ml-3 underline text-xs">dismiss</button>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('posts')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'posts' ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'}`}>
