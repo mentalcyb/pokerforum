@@ -10,22 +10,26 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 type Category = { id: number; name: string; description: string; icon: string; post_count: number }
 type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
+type Tournament = { id: number; name: string; date: string; buyin: string; status: string }
 
 export default function HomePage() {
   const { t } = useApp()
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<Post[]>([])
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     async function load() {
-      const [{ data: cats }, { data: ps }] = await Promise.all([
+      const [{ data: cats }, { data: ps }, { data: ts }] = await Promise.all([
         supabase.from('categories').select('*').order('id'),
-        supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10)
+        supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
+        supabase.from('tournaments').select('*').order('created_at'),
       ])
       setCategories(cats || [])
       setPosts((ps as any) || [])
+      setTournaments(ts || [])
       setLoading(false)
     }
     load()
@@ -119,16 +123,15 @@ export default function HomePage() {
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
             </div>
-            {[
-              { name: 'TPC Monthly', date: '1 ივნისი', buyin: '₾200', status: 'open' },
-              { name: 'Online Sunday', date: '2 ივნისი', buyin: 'GTD ₾5,000', status: 'online' },
-              { name: 'GPS #3', date: '8–10 ივნისი', buyin: '₾500', status: 'soon' },
-            ].map((t2, i) => (
-              <div key={i} className="px-5 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
-                <div className="text-sm font-medium text-gray-900 dark:text-white">{t2.name}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{t2.date} · {t2.buyin}</div>
-              </div>
-            ))}
+            {tournaments.length === 0
+              ? <div className="p-5 text-center text-xs text-gray-400">ტურნირები არ არის</div>
+              : tournaments.map(tr => (
+                <div key={tr.id} className="px-5 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">{tr.name}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{tr.date} · {tr.buyin}</div>
+                </div>
+              ))
+            }
           </div>
 
           <div className="bg-brand-600 rounded-2xl p-5 text-white">
