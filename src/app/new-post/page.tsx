@@ -1,12 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 
 type Category = { id: number; name: string }
 
-export default function NewPostPage() {
+function NewPostForm() {
   const { t } = useApp()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -74,5 +74,14 @@ export default function NewPostPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function NewPostPage() {
+  const { t } = useApp()
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>}>
+      <NewPostForm />
+    </Suspense>
   )
 }
