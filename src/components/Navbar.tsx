@@ -18,6 +18,7 @@ export default function Navbar() {
         supabase.from('profiles').select('is_admin').eq('id', data.user.id).single().then(({ data: p }) => {
           setIsAdmin(p?.is_admin || false)
         })
+        supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', data.user.id).then(() => {})
       }
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {

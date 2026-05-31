@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -11,29 +11,65 @@ const CATEGORY_ICONS: Record<string, string> = {
 type Category = { id: number; name: string; description: string; icon: string; post_count: number }
 type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
 type Tournament = { id: number; name: string; date: string; buyin: string; status: string }
+type Stats = { members: number; posts: number; online: number }
 
 export default function HomePage() {
   const { t } = useApp()
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    async function load() {
-      const [{ data: cats }, { data: ps }, { data: ts }] = await Promise.all([
-        supabase.from('categories').select('*').order('id'),
-        supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('tournaments').select('*').order('created_at'),
-      ])
-      setCategories(cats || [])
-      setPosts((ps as any) || [])
-      setTournaments(ts || [])
-      setLoading(false)
-    }
+    // Update last_seen for logged-in user
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase.from('profiles')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', data.user.id)
+          .then(() => {})
+      }
+    })
+
     load()
+
+    // Refresh stats every 30 seconds
+    intervalRef.current = setInterval(loadStats, 30000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function loadStats() {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const [{ count: memberCount }, { count: postCount }, { count: onlineCount }] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('posts').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('last_seen', fiveMinutesAgo),
+    ])
+    setStats({
+      members: memberCount ?? 0,
+      posts: postCount ?? 0,
+      online: onlineCount ?? 0,
+    })
+  }
+
+  async function load() {
+    const [{ data: cats }, { data: ps }, { data: ts }] = await Promise.all([
+      supabase.from('categories').select('*').order('id'),
+      supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
+      supabase.from('tournaments').select('*').order('created_at'),
+    ])
+    setCategories(cats || [])
+    setPosts((ps as any) || [])
+    setTournaments(ts || [])
+    await loadStats()
+    setLoading(false)
+  }
 
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
@@ -56,9 +92,21 @@ export default function HomePage() {
           </div>
         </div>
         <div className="flex gap-8 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <div><div className="text-xl font-bold text-brand-600">4,821</div><div className="text-xs text-gray-500">{t.members}</div></div>
-          <div><div className="text-xl font-bold text-brand-600">{posts.length}+</div><div className="text-xs text-gray-500">{t.posts}</div></div>
-          <div><div className="text-xl font-bold text-brand-600">143</div><div className="text-xs text-gray-500">{t.online_now}</div></div>
+          <div>
+            <div className="text-xl font-bold text-brand-600">{loading ? '…' : stats.members.toLocaleString()}</div>
+            <div className="text-xs text-gray-500">{t.members}</div>
+          </div>
+          <div>
+            <div className="text-xl font-bold text-brand-600">{loading ? '…' : stats.posts.toLocaleString()}</div>
+            <div className="text-xs text-gray-500">{t.posts}</div>
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"></span>
+              <span className="text-xl font-bold text-brand-600">{loading ? '…' : stats.online}</span>
+            </div>
+            <div className="text-xs text-gray-500">{t.online_now}</div>
+          </div>
         </div>
       </div>
 
