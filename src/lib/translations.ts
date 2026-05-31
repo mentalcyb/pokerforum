@@ -1,7 +1,7 @@
 export const translations = {
   ka: {
-    siteName: 'პოკერი.ge',
-    tagline: 'საქართველოს უდიდესი პოკერის ფორუმი',
+    siteName: 'pokerforum.ge',
+    tagline: 'პირველი ქართული პოკერის ფორუმი',
     home: 'მთავარი',
     strategy: 'სტრატეგია',
     tournaments: 'ტურნირები',
@@ -52,8 +52,8 @@ export const translations = {
     beFirst: 'იყავი პირველი!',
   },
   en: {
-    siteName: 'Pokeri.ge',
-    tagline: "Georgia's Largest Poker Forum",
+    siteName: 'pokerforum.ge',
+    tagline: 'პირველი ქართული პოკერის ფორუმი',
     home: 'Home',
     strategy: 'Strategy',
     tournaments: 'Tournaments',

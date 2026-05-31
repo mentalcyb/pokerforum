@@ -4,8 +4,8 @@ import { AppProvider } from '@/contexts/AppContext'
 import Navbar from '@/components/Navbar'
 
 export const metadata: Metadata = {
-  title: 'პოკერი.ge | Pokeri.ge',
-  description: "Georgia's largest poker forum",
+  title: 'pokerforum.ge',
+  description: 'პირველი ქართული პოკერის ფორუმი',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
