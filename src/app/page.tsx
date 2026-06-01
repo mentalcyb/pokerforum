@@ -59,8 +59,15 @@ export default function HomePage() {
   }
 
   async function load() {
-    const [{ data: cats }, { data: ps }, { data: ts }] = await Promise.all([
-      supabase.from('categories').select('*').order('sort_order', { ascending: true, nullsFirst: false }).order('id'),
+    // Try sort_order first; if column doesn't exist yet fall back to id
+    let { data: cats, error: catErr } = await supabase
+      .from('categories').select('*').order('sort_order', { ascending: true }).order('id')
+    if (catErr) {
+      const { data: catsFallback } = await supabase.from('categories').select('*').order('id')
+      cats = catsFallback
+    }
+
+    const [{ data: ps }, { data: ts }] = await Promise.all([
       supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
       supabase.from('tournaments').select('*').order('created_at'),
     ])
