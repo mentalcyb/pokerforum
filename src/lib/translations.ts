@@ -59,6 +59,10 @@ export const translations = {
     confirmEmail: 'შეამოწმე შენი ელ-ფოსტა და დაადასტურე რეგისტრაცია!',
     loginError: 'შეცდომა შესვლისას. შეამოწმე ელ-ფოსტა და პაროლი.',
     registerError: 'შეცდომა რეგისტრაციისას.',
+    confirmPassword: 'პაროლის დადასტურება',
+    passwordMismatch: 'პაროლები არ ემთხვევა',
+    showPassword: 'პაროლის ჩვენება',
+    hidePassword: 'პაროლის დამალვა',
     // ui
     darkMode: 'მუქი რეჟიმი',
     lightMode: 'ნათელი რეჟიმი',
@@ -164,6 +168,10 @@ export const translations = {
     confirmEmail: 'Check your email and confirm your registration!',
     loginError: 'Login error. Check your email and password.',
     registerError: 'Registration error.',
+    confirmPassword: 'Confirm password',
+    passwordMismatch: 'Passwords do not match',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     // ui
     darkMode: 'Dark Mode',
     lightMode: 'Light Mode',
