@@ -46,7 +46,8 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">♠</div>
           <span className="font-semibold text-gray-900 dark:text-white">{t.siteName}</span>
-          <span className="text-base">{'🇬🇪'}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://flagcdn.com/w20/ge.png" width={20} height={14} alt="GE" className="inline-block" />
         </Link>
 
         <div className="flex items-center gap-2">
