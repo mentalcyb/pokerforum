@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
+import ContentRenderer from '@/components/ContentRenderer'
 
 type Post = { id: number; title: string; content: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
 type Reply = { id: number; content: string; created_at: string; profiles: { username: string } }
@@ -66,7 +67,7 @@ export default function PostPage() {
         <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {t.postedBy} <span className="font-medium text-gray-700 dark:text-gray-300">{(post.profiles as any)?.username}</span> · {timeAgo(post.created_at)}
         </div>
-        <div className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</div>
+        <ContentRenderer content={post.content} className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed" />
         <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400">
           <span>{post.reply_count} {t.replies}</span>
           <span>{post.view_count} {t.views}</span>
@@ -82,7 +83,7 @@ export default function PostPage() {
             <span className="text-sm font-medium text-gray-900 dark:text-white">{(r.profiles as any)?.username}</span>
             <span className="text-xs text-gray-400">{timeAgo(r.created_at)}</span>
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{r.content}</p>
+          <ContentRenderer content={r.content} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" />
         </div>
       ))}
 
