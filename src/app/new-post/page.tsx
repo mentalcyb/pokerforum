@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
+import ImageUploader from '@/components/ImageUploader'
 
 type Category = { id: number; name: string }
 
@@ -63,7 +64,15 @@ function NewPostForm() {
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.content}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.content}</label>
+              {user && (
+                <ImageUploader
+                  userId={user.id}
+                  onInsert={url => setContent(prev => prev + (prev && !prev.endsWith('\n') ? '\n' : '') + url + '\n')}
+                />
+              )}
+            </div>
             <textarea value={content} onChange={e => setContent(e.target.value)} required rows={8} placeholder={t.contentPlaceholder}
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
           </div>

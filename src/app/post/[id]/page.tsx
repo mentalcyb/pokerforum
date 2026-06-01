@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import ContentRenderer from '@/components/ContentRenderer'
+import ImageUploader from '@/components/ImageUploader'
 
 type Post = { id: number; title: string; content: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
 type Reply = { id: number; content: string; created_at: string; profiles: { username: string } }
@@ -22,6 +23,7 @@ export default function PostPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
     loadPost()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   async function loadPost() {
@@ -47,6 +49,14 @@ export default function PostPage() {
     setLoading(false)
   }
 
+  // Insert uploaded image URL at cursor position in textarea
+  function insertAtCursor(url: string) {
+    setReplyText(prev => {
+      const sep = prev && !prev.endsWith('\n') ? '\n' : ''
+      return prev + sep + url + '\n'
+    })
+  }
+
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60000)
@@ -61,6 +71,8 @@ export default function PostPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Link href="/" className="text-brand-600 text-sm hover:underline mb-4 block">← {t.home}</Link>
+
+      {/* Post */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-4">
         <div className="text-xs text-brand-600 font-medium mb-2">{(post.categories as any)?.name}</div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{post.title}</h1>
@@ -74,6 +86,7 @@ export default function PostPage() {
         </div>
       </div>
 
+      {/* Replies */}
       {replies.map(r => (
         <div key={r.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-3">
           <div className="flex items-center gap-2 mb-3">
@@ -87,16 +100,28 @@ export default function PostPage() {
         </div>
       ))}
 
+      {/* Reply form */}
       {user ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mt-4">
           <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-3">{t.reply}</h3>
           <form onSubmit={handleReply} className="space-y-3">
-            <textarea value={replyText} onChange={e => setReplyText(e.target.value)} rows={4} placeholder={t.replyPlaceholder}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
-            <button type="submit" disabled={loading}
-              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {loading ? t.loading : t.submit}
-            </button>
+            <textarea
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              rows={4}
+              placeholder={t.replyPlaceholder}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <ImageUploader userId={user.id} onInsert={insertAtCursor} />
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {loading ? t.loading : t.submit}
+              </button>
+            </div>
           </form>
         </div>
       ) : (
