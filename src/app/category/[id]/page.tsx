@@ -41,10 +41,10 @@ export default function CategoryPage() {
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins} წთ ${t.ago}`
+    if (mins < 60) return `${mins} ${t.min} ${t.ago}`
     const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs} სთ ${t.ago}`
-    return `${Math.floor(hrs / 24)} დღე ${t.ago}`
+    if (hrs < 24) return `${hrs} ${t.hr} ${t.ago}`
+    return `${Math.floor(hrs / 24)} ${t.day} ${t.ago}`
   }
 
   if (loading) return (
@@ -52,7 +52,7 @@ export default function CategoryPage() {
   )
 
   if (!category) return (
-    <div className="flex items-center justify-center min-h-screen text-gray-400">კატეგორია ვერ მოიძებნა</div>
+    <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
   )
 
   return (

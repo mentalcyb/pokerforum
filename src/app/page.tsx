@@ -74,10 +74,10 @@ export default function HomePage() {
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins} წთ ${t.ago}`
+    if (mins < 60) return `${mins} ${t.min} ${t.ago}`
     const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs} სთ ${t.ago}`
-    return `${Math.floor(hrs / 24)} დღე ${t.ago}`
+    if (hrs < 24) return `${hrs} ${t.hr} ${t.ago}`
+    return `${Math.floor(hrs / 24)} ${t.day} ${t.ago}`
   }
 
   return (
@@ -172,7 +172,7 @@ export default function HomePage() {
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
             </div>
             {tournaments.length === 0
-              ? <div className="p-5 text-center text-xs text-gray-400">ტურნირები არ არის</div>
+              ? <div className="p-5 text-center text-xs text-gray-400">{t.noTournaments}</div>
               : tournaments.map(tr => (
                 <div key={tr.id} className="px-5 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">{tr.name}</div>

@@ -60,10 +60,10 @@ export default function PostPage() {
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins} წთ ${t.ago}`
+    if (mins < 60) return `${mins} ${t.min} ${t.ago}`
     const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs} სთ ${t.ago}`
-    return `${Math.floor(hrs / 24)} დღე ${t.ago}`
+    if (hrs < 24) return `${hrs} ${t.hr} ${t.ago}`
+    return `${Math.floor(hrs / 24)} ${t.day} ${t.ago}`
   }
 
   if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>

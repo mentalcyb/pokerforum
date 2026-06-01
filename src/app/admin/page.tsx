@@ -68,7 +68,7 @@ export default function AdminPage() {
 
   // --- Posts ---
   async function deletePost(id: number) {
-    if (!confirm('პოსტი წაიშლება. დარწმუნებული ხარ?')) return
+    if (!confirm(t.confirmDeletePost)) return
     setError(null)
     const { error: e1 } = await supabase.from('replies').delete().eq('post_id', id)
     if (e1) { setError(`replies error: ${e1.message}`); return }
@@ -100,7 +100,7 @@ export default function AdminPage() {
   }
 
   async function deleteCategory(id: number) {
-    if (!confirm('კატეგორია წაიშლება. ყველა პოსტი დარჩება მაგრამ კატეგორიის გარეშე.')) return
+    if (!confirm(t.confirmDeleteCategory)) return
     setError(null)
     const { error: e } = await supabase.from('categories').delete().eq('id', id)
     if (e) { setError(`category delete error: ${e.message}`); return }
@@ -131,7 +131,7 @@ export default function AdminPage() {
   }
 
   async function deleteTournament(id: number) {
-    if (!confirm('ტურნირი წაიშლება?')) return
+    if (!confirm(t.confirmDeleteTournament)) return
     setError(null)
     const { error: e } = await supabase.from('tournaments').delete().eq('id', id)
     if (e) { setError(`tournament delete error: ${e.message}`); return }
@@ -156,7 +156,7 @@ export default function AdminPage() {
   }
 
   async function deleteUser(userId: string) {
-    if (!confirm('მომხმარებელი წაიშლება?')) return
+    if (!confirm(t.confirmDeleteUser)) return
     await supabase.from('posts').delete().eq('user_id', userId)
     await supabase.from('replies').delete().eq('user_id', userId)
     await supabase.from('profiles').delete().eq('id', userId)
@@ -174,7 +174,7 @@ export default function AdminPage() {
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-lg">⚙️</div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">ადმინ პანელი / Admin Panel</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t.adminPanel}</h1>
       </div>
 
       {error && (
@@ -185,17 +185,17 @@ export default function AdminPage() {
       )}
 
       <div className="flex gap-2 mb-6">
-        <button onClick={() => setTab('posts')} className={tabClass('posts')}>პოსტები ({posts.length})</button>
-        <button onClick={() => setTab('categories')} className={tabClass('categories')}>კატეგორიები ({categories.length})</button>
-        <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>ტურნირები ({tournaments.length})</button>
-        <button onClick={() => setTab('users')} className={tabClass('users')}>მომხმარებლები ({users.length})</button>
+        <button onClick={() => setTab('posts')} className={tabClass('posts')}>{t.postsTab} ({posts.length})</button>
+        <button onClick={() => setTab('categories')} className={tabClass('categories')}>{t.categoriesTab} ({categories.length})</button>
+        <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>{t.tournamentsTab} ({tournaments.length})</button>
+        <button onClick={() => setTab('users')} className={tabClass('users')}>{t.usersTab} ({users.length})</button>
       </div>
 
       {/* ── POSTS TAB ── */}
       {tab === 'posts' && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {posts.length === 0
-            ? <div className="p-8 text-center text-gray-400">პოსტები არ არის</div>
+            ? <div className="p-8 text-center text-gray-400">{t.noPostsAdmin}</div>
             : posts.map(post => (
               <div key={post.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
                 {postEditing?.id === post.id ? (
@@ -206,10 +206,10 @@ export default function AdminPage() {
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
                     <div className="flex gap-2">
                       <button onClick={savePostEdit} disabled={saving} className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                        {saving ? t.loading : '✓ შენახვა'}
+                        {saving ? t.loading : t.save}
                       </button>
                       <button onClick={() => setPostEditing(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        გაუქმება
+                        {t.cancel}
                       </button>
                     </div>
                   </div>
@@ -223,11 +223,11 @@ export default function AdminPage() {
                     <div className="flex gap-2 flex-shrink-0">
                       <button onClick={() => setPostEditing({ id: post.id, title: post.title, content: post.content })}
                         className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
-                        ✏️ რედაქტირება
+                        {t.edit}
                       </button>
                       <button onClick={() => deletePost(post.id)}
                         className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
-                        🗑️ წაშლა
+                        {t.delete}
                       </button>
                     </div>
                   </div>
@@ -244,34 +244,34 @@ export default function AdminPage() {
           {/* Create new category */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="font-medium text-gray-900 dark:text-white text-sm">კატეგორიები</h2>
+              <h2 className="font-medium text-gray-900 dark:text-white text-sm">{t.categoriesTab}</h2>
               {!newCat && (
                 <button
                   onClick={() => setNewCat({ name: '', description: '', icon: 'spade' })}
                   className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors"
                 >
-                  + ახალი კატეგორია
+                  {t.newCategory}
                 </button>
               )}
             </div>
 
             {newCat && (
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-brand-50 dark:bg-brand-900/10 space-y-3">
-                <div className="text-xs font-medium text-brand-700 dark:text-brand-400 mb-2">ახალი კატეგორია</div>
+                <div className="text-xs font-medium text-brand-700 dark:text-brand-400 mb-2">{t.newCategoryLabel}</div>
                 <input
                   value={newCat.name}
                   onChange={e => setNewCat({ ...newCat, name: e.target.value })}
-                  placeholder="სახელი"
+                  placeholder={t.name}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <input
                   value={newCat.description}
                   onChange={e => setNewCat({ ...newCat, description: e.target.value })}
-                  placeholder="აღწერა"
+                  placeholder={t.description}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">ხატულა:</span>
+                  <span className="text-xs text-gray-500">{t.icon}:</span>
                   {ICON_OPTIONS.map(icon => (
                     <button key={icon} onClick={() => setNewCat({ ...newCat, icon })}
                       className={`w-8 h-8 rounded-lg text-base transition-colors ${newCat.icon === icon ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
@@ -282,30 +282,30 @@ export default function AdminPage() {
                 <div className="flex gap-2">
                   <button onClick={createCategory} disabled={saving || !newCat.name.trim()}
                     className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                    {saving ? t.loading : '+ შექმნა'}
+                    {saving ? t.loading : t.create}
                   </button>
                   <button onClick={() => setNewCat(null)}
                     className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 transition-colors">
-                    გაუქმება
+                    {t.cancel}
                   </button>
                 </div>
               </div>
             )}
 
             {categories.length === 0
-              ? <div className="p-8 text-center text-gray-400">კატეგორიები არ არის</div>
+              ? <div className="p-8 text-center text-gray-400">{t.noCategoriesYet}</div>
               : categories.map(cat => (
                 <div key={cat.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
                   {catEditing?.id === cat.id ? (
                     <div className="px-5 py-4 space-y-3">
                       <input value={catEditing.name} onChange={e => setCatEditing({ ...catEditing, name: e.target.value })}
-                        placeholder="სახელი"
+                        placeholder={t.name}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       <input value={catEditing.description} onChange={e => setCatEditing({ ...catEditing, description: e.target.value })}
-                        placeholder="აღწერა"
+                        placeholder={t.description}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">ხატულა:</span>
+                        <span className="text-xs text-gray-500">{t.icon}:</span>
                         {ICON_OPTIONS.map(icon => (
                           <button key={icon} onClick={() => setCatEditing({ ...catEditing, icon })}
                             className={`w-8 h-8 rounded-lg text-base transition-colors ${catEditing.icon === icon ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
@@ -316,11 +316,11 @@ export default function AdminPage() {
                       <div className="flex gap-2">
                         <button onClick={saveCatEdit} disabled={saving}
                           className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                          {saving ? t.loading : '✓ შენახვა'}
+                          {saving ? t.loading : t.save}
                         </button>
                         <button onClick={() => setCatEditing(null)}
                           className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          გაუქმება
+                          {t.cancel}
                         </button>
                       </div>
                     </div>
@@ -332,17 +332,17 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{cat.name}</div>
                         <div className="text-xs text-gray-400 truncate mt-0.5">{cat.description}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{cat.post_count} პოსტი</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{cat.post_count} {t.catPostCount}</div>
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => setCatEditing({ id: cat.id, name: cat.name, description: cat.description, icon: cat.icon })}
                           className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
-                          ✏️ რედაქტირება
+                          {t.edit}
                         </button>
                         <button onClick={() => deleteCategory(cat.id)}
                           className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
-                          🗑️ წაშლა
+                          {t.delete}
                         </button>
                       </div>
                     </div>
@@ -359,29 +359,29 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="font-medium text-gray-900 dark:text-white text-sm">ტურნირები</h2>
+              <h2 className="font-medium text-gray-900 dark:text-white text-sm">{t.tournamentsTab}</h2>
               {!newTournament && (
                 <button
                   onClick={() => setNewTournament({ name: '', date: '', buyin: '', status: 'open' })}
                   className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors"
                 >
-                  + ახალი ტურნირი
+                  {t.newTournamentBtn}
                 </button>
               )}
             </div>
 
             {newTournament && (
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-brand-50 dark:bg-brand-900/10 space-y-3">
-                <div className="text-xs font-medium text-brand-700 dark:text-brand-400 mb-2">ახალი ტურნირი</div>
+                <div className="text-xs font-medium text-brand-700 dark:text-brand-400 mb-2">{t.newTournamentLabel}</div>
                 <input value={newTournament.name} onChange={e => setNewTournament({ ...newTournament, name: e.target.value })}
-                  placeholder="სახელი (მაგ. TPC Monthly)"
+                  placeholder={`${t.name} (e.g. TPC Monthly)`}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 <div className="grid grid-cols-2 gap-3">
                   <input value={newTournament.date} onChange={e => setNewTournament({ ...newTournament, date: e.target.value })}
-                    placeholder="თარიღი (მაგ. 1 ივნისი)"
+                    placeholder="Date (e.g. June 1)"
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   <input value={newTournament.buyin} onChange={e => setNewTournament({ ...newTournament, buyin: e.target.value })}
-                    placeholder="Buy-in (მაგ. ₾200)"
+                    placeholder="Buy-in (e.g. ₾200)"
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
                 <select value={newTournament.status} onChange={e => setNewTournament({ ...newTournament, status: e.target.value })}
@@ -394,18 +394,18 @@ export default function AdminPage() {
                 <div className="flex gap-2">
                   <button onClick={createTournament} disabled={saving || !newTournament.name.trim()}
                     className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                    {saving ? t.loading : '+ შექმნა'}
+                    {saving ? t.loading : t.create}
                   </button>
                   <button onClick={() => setNewTournament(null)}
                     className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 transition-colors">
-                    გაუქმება
+                    {t.cancel}
                   </button>
                 </div>
               </div>
             )}
 
             {tournaments.length === 0
-              ? <div className="p-8 text-center text-gray-400">ტურნირები არ არის</div>
+              ? <div className="p-8 text-center text-gray-400">{t.noTournamentsAdmin}</div>
               : tournaments.map(tr => (
                 <div key={tr.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
                   {tournamentEditing?.id === tr.id ? (
@@ -431,11 +431,11 @@ export default function AdminPage() {
                       <div className="flex gap-2">
                         <button onClick={saveTournamentEdit} disabled={saving}
                           className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                          {saving ? t.loading : '✓ შენახვა'}
+                          {saving ? t.loading : t.save}
                         </button>
                         <button onClick={() => setTournamentEditing(null)}
                           className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          გაუქმება
+                          {t.cancel}
                         </button>
                       </div>
                     </div>
@@ -455,11 +455,11 @@ export default function AdminPage() {
                         <button
                           onClick={() => setTournamentEditing({ id: tr.id, name: tr.name, date: tr.date, buyin: tr.buyin, status: tr.status })}
                           className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
-                          ✏️ რედაქტირება
+                          {t.edit}
                         </button>
                         <button onClick={() => deleteTournament(tr.id)}
                           className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
-                          🗑️ წაშლა
+                          {t.delete}
                         </button>
                       </div>
                     </div>
@@ -475,7 +475,7 @@ export default function AdminPage() {
       {tab === 'users' && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           {users.length === 0
-            ? <div className="p-8 text-center text-gray-400">მომხმარებლები არ არიან</div>
+            ? <div className="p-8 text-center text-gray-400">{t.noUsersYet}</div>
             : users.map(user => (
               <div key={user.id} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 last:border-0">
                 <div className="w-9 h-9 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center text-brand-700 dark:text-brand-400 text-sm font-bold flex-shrink-0">
@@ -485,7 +485,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900 dark:text-white">{user.username}</span>
                     {user.is_admin && (
-                      <span className="px-1.5 py-0.5 text-xs bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 rounded">ადმინი</span>
+                      <span className="px-1.5 py-0.5 text-xs bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 rounded">{t.isAdmin}</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{new Date(user.created_at).toLocaleDateString()}</div>
@@ -493,11 +493,11 @@ export default function AdminPage() {
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => toggleAdmin(user.id, user.is_admin)}
                     className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-brand-200 text-brand-600 hover:bg-brand-50'}`}>
-                    {user.is_admin ? '👑 მოხსნა' : '👑 ადმინი'}
+                    {user.is_admin ? t.removeAdmin : t.makeAdmin}
                   </button>
                   <button onClick={() => deleteUser(user.id)}
                     className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
-                    🗑️ წაშლა
+                    {t.delete}
                   </button>
                 </div>
               </div>

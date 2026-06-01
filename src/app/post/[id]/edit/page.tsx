@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 
 export default function EditPostPage() {
+  const { t } = useApp()
   const router = useRouter()
   const params = useParams()
   const [title, setTitle] = useState('')
@@ -22,6 +24,7 @@ export default function EditPostPage() {
       if (post) { setTitle(post.title); setContent(post.content) }
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,23 +37,23 @@ export default function EditPostPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link href="/admin" className="text-brand-600 text-sm hover:underline mb-4 block">← ადმინ პანელი</Link>
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-6">პოსტის ჩასწორება</h1>
+      <Link href="/admin" className="text-brand-600 text-sm hover:underline mb-4 block">{t.backToAdmin}</Link>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{t.editPost}</h1>
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">სათაური</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.title}</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)} required
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">შინაარსი</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.content}</label>
             <textarea value={content} onChange={e => setContent(e.target.value)} required rows={8}
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
           </div>
           <button type="submit" disabled={loading}
             className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors text-sm">
-            {loading ? 'იტვირთება...' : 'შენახვა'}
+            {loading ? t.loading : t.save}
           </button>
         </form>
       </div>
