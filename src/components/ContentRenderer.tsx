@@ -41,10 +41,12 @@ type Segment =
 function parseContent(text: string): Segment[] {
   const segments: Segment[] = []
   let lastIndex = 0
+  const re = new RegExp(URL_REGEX.source, 'g')
+  let match: RegExpExecArray | null
 
-  for (const match of text.matchAll(URL_REGEX)) {
+  while ((match = re.exec(text)) !== null) {
     const url = match[0]
-    const start = match.index!
+    const start = match.index
 
     if (start > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, start) })
@@ -59,7 +61,7 @@ function parseContent(text: string): Segment[] {
       segments.push({ type: 'link', value: url })
     }
 
-    lastIndex = start + url.length
+    lastIndex = re.lastIndex
   }
 
   if (lastIndex < text.length) {
