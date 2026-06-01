@@ -56,7 +56,7 @@ export default function AdminPage() {
     const [{ data: p }, { data: u }, { data: c }, { data: tr }] = await Promise.all([
       supabase.from('posts').select('id, title, content, created_at, profiles(username), categories(name)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, username, is_admin, created_at').order('created_at', { ascending: false }),
-      supabase.from('categories').select('*').order('id'),
+      supabase.from('categories').select('*').order('sort_order', { ascending: true, nullsFirst: false }).order('id'),
       supabase.from('tournaments').select('*').order('created_at'),
     ])
     setPosts((p as unknown as PostRow[]) ?? [])
