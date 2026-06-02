@@ -63,7 +63,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
         <Link href="/" className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="pokerforum.ge logo" width={36} height={36} className="rounded-full" />
+          <img src="/logo.svg" alt="pokerforum.ge logo" width={48} height={48} className="rounded-full" />
           <span className="font-semibold text-gray-900 dark:text-white">{t.siteName}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://flagcdn.com/w20/ge.png" width={20} height={14} alt="GE" className="inline-block" />
