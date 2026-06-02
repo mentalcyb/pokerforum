@@ -14,7 +14,6 @@ export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
@@ -38,34 +37,20 @@ export default function ProfilePage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!userId) return
-    setSaving(true); setError(null); setSuccess(false)
+    setSaving(true); setError(null)
 
-    console.log('[Profile] saving avatar:', avatar, 'for user:', userId)
-
-    const { data, error: err } = await supabase
+    const { error: err } = await supabase
       .from('profiles')
       .update({ avatar })
       .eq('id', userId)
-      .select()
-
-    console.log('[Profile] update result → data:', data, '| error:', err)
 
     if (err) {
-      console.error('[Profile] save failed:', err.message, err.code, err.details)
       setError(`${err.message} (code: ${err.code})`)
       setSaving(false)
       return
     }
 
-    // Verify the value was actually written back
-    const { data: verify, error: verifyErr } = await supabase
-      .from('profiles').select('avatar').eq('id', userId).single()
-    console.log('[Profile] verify read-back → avatar:', verify?.avatar, '| error:', verifyErr)
-
-    setSaving(false)
-    setSuccess(true)
-    window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
-    setTimeout(() => setSuccess(false), 3000)
+    window.location.reload()
   }
 
   if (loading) return (
@@ -124,12 +109,10 @@ export default function ProfilePage() {
 
           <button
             type="submit"
-            disabled={saving || success}
-            className={`w-full py-2.5 disabled:opacity-75 text-white font-medium rounded-lg transition-colors text-sm ${
-              success ? 'bg-green-600' : 'bg-brand-600 hover:bg-brand-700'
-            }`}
+            disabled={saving}
+            className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors text-sm"
           >
-            {saving ? t.loading : success ? `✓ ${t.profileSaved}` : t.saveChanges}
+            {saving ? t.loading : t.saveChanges}
           </button>
         </form>
       </div>
