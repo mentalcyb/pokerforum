@@ -50,7 +50,8 @@ export default function ProfilePage() {
       return
     }
 
-    window.location.reload()
+    setSaving(false)
+    window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
   }
 
   if (loading) return (
