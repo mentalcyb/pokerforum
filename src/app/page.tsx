@@ -27,17 +27,18 @@ export default function HomePage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    // Update last_seen for logged-in user
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        supabase.from('profiles')
+    async function init() {
+      // Update last_seen BEFORE loading stats so current user appears online
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { error: lsErr } = await supabase.from('profiles')
           .update({ last_seen: new Date().toISOString() })
-          .eq('id', data.user.id)
-          .then(() => {})
+          .eq('id', user.id)
+        if (lsErr) console.warn('[last_seen] update failed:', lsErr.message, lsErr.code)
       }
-    })
-
-    load()
+      await load()
+    }
+    init()
 
     // Refresh stats every 30 seconds
     intervalRef.current = setInterval(loadStats, 30000)
