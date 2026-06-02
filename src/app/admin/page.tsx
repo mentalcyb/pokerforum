@@ -10,7 +10,7 @@ const ICON_MAP: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
 }
 
-interface UserRow { id: string; username: string; is_admin: boolean; created_at: string }
+interface UserRow { id: string; username: string; is_admin: boolean; is_moderator: boolean; is_banned: boolean; created_at: string }
 interface PostRow { id: number; title: string; content: string; created_at: string; profiles: { username: string } | null; categories: { name: string } | null }
 interface CategoryRow { id: number; name: string; description: string; icon: string; post_count: number }
 interface TournamentRow { id: number; name: string; date: string; buyin: string; status: string }
@@ -36,6 +36,7 @@ export default function AdminPage() {
   const [newTournament, setNewTournament] = useState<NewTournamentState | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -47,15 +48,17 @@ export default function AdminPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/'); return }
     const { data: profile } = await supabase
-      .from('profiles').select('is_admin').eq('id', user.id).single()
-    if (!profile?.is_admin) { router.push('/'); return }
+      .from('profiles').select('is_admin, is_moderator').eq('id', user.id).single()
+    if (!profile?.is_admin && !profile?.is_moderator) { router.push('/'); return }
+    setCurrentUserIsAdmin(profile?.is_admin || false)
+    if (!profile?.is_admin && profile?.is_moderator) setTab('posts')
     await loadData()
   }
 
   async function loadData() {
     const [{ data: p }, { data: u }, { data: c }, { data: tr }] = await Promise.all([
       supabase.from('posts').select('id, title, content, created_at, profiles(username), categories(name)').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('id, username, is_admin, created_at').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, username, is_admin, is_moderator, is_banned, created_at').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('id'),
       supabase.from('tournaments').select('*').order('created_at'),
     ])
@@ -155,6 +158,17 @@ export default function AdminPage() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
   }
 
+  async function toggleMod(userId: string, current: boolean) {
+    await supabase.from('profiles').update({ is_moderator: !current }).eq('id', userId)
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_moderator: !current } : u))
+  }
+
+  async function toggleBan(userId: string, current: boolean) {
+    if (!confirm(current ? t.confirmUnban : t.confirmBan)) return
+    await supabase.from('profiles').update({ is_banned: !current }).eq('id', userId)
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
+  }
+
   async function deleteUser(userId: string) {
     if (!confirm(t.confirmDeleteUser)) return
     await supabase.from('posts').delete().eq('user_id', userId)
@@ -186,8 +200,8 @@ export default function AdminPage() {
 
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('posts')} className={tabClass('posts')}>{t.postsTab} ({posts.length})</button>
-        <button onClick={() => setTab('categories')} className={tabClass('categories')}>{t.categoriesTab} ({categories.length})</button>
-        <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>{t.tournamentsTab} ({tournaments.length})</button>
+        {currentUserIsAdmin && <button onClick={() => setTab('categories')} className={tabClass('categories')}>{t.categoriesTab} ({categories.length})</button>}
+        {currentUserIsAdmin && <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>{t.tournamentsTab} ({tournaments.length})</button>}
         <button onClick={() => setTab('users')} className={tabClass('users')}>{t.usersTab} ({users.length})</button>
       </div>
 
@@ -482,21 +496,29 @@ export default function AdminPage() {
                   {user.username?.[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{user.username}</span>
-                    {user.is_admin && (
-                      <span className="px-1.5 py-0.5 text-xs bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 rounded">{t.isAdmin}</span>
-                    )}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-sm font-medium ${user.is_banned ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>{user.username}</span>
+                    {user.is_admin && <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded">{t.isAdmin}</span>}
+                    {user.is_moderator && !user.is_admin && <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded">{t.isModerator}</span>}
+                    {user.is_banned && <span className="px-1.5 py-0.5 text-xs bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded">{t.isBanned}</span>}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{new Date(user.created_at).toLocaleDateString()}</div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex flex-wrap gap-1.5 flex-shrink-0">
                   <button onClick={() => toggleAdmin(user.id, user.is_admin)}
-                    className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-brand-200 text-brand-600 hover:bg-brand-50'}`}>
+                    className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-amber-200 text-amber-600 hover:bg-amber-50'}`}>
                     {user.is_admin ? t.removeAdmin : t.makeAdmin}
                   </button>
+                  <button onClick={() => toggleMod(user.id, user.is_moderator)}
+                    className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_moderator ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}>
+                    {user.is_moderator ? t.removeMod : t.makeMod}
+                  </button>
+                  <button onClick={() => toggleBan(user.id, user.is_banned)}
+                    className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_banned ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-orange-200 text-orange-600 hover:bg-orange-50'}`}>
+                    {user.is_banned ? t.unbanUser : t.banUser}
+                  </button>
                   <button onClick={() => deleteUser(user.id)}
-                    className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
+                    className="px-2.5 py-1 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
                     {t.delete}
                   </button>
                 </div>

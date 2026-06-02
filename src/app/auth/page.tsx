@@ -77,6 +77,17 @@ function AuthForm() {
     } else {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) { setError(t.loginError); setLoading(false); return }
+      // Check if banned
+      const { data: { user: loggedIn } } = await supabase.auth.getUser()
+      if (loggedIn) {
+        const { data: prof } = await supabase.from('profiles').select('is_banned').eq('id', loggedIn.id).single()
+        if (prof?.is_banned) {
+          await supabase.auth.signOut()
+          setError(t.bannedMessage)
+          setLoading(false)
+          return
+        }
+      }
       router.push('/')
     }
     setLoading(false)

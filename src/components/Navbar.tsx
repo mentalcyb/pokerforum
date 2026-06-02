@@ -10,6 +10,7 @@ export default function Navbar() {
   const { t, lang, setLang, dark, toggleDark } = useApp()
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isMod, setIsMod] = useState(false)
   const [avatar, setAvatar] = useState<string>('spade')
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -18,9 +19,10 @@ export default function Navbar() {
 
   async function loadProfile(uid: string) {
     const { data: p } = await supabase
-      .from('profiles').select('is_admin, avatar').eq('id', uid).single()
+      .from('profiles').select('is_admin, is_moderator, avatar').eq('id', uid).single()
     if (p) {
       setIsAdmin(p.is_admin || false)
+      setIsMod(p.is_moderator || false)
       setAvatar(p.avatar || 'spade')
     }
     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(() => {})
@@ -37,7 +39,7 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
-      else { setIsAdmin(false); setAvatar('spade'); setUnreadCount(0) }
+      else { setIsAdmin(false); setIsMod(false); setAvatar('spade'); setUnreadCount(0) }
     })
     const onAvatarUpdated = (e: Event) => setAvatar((e as CustomEvent).detail)
     window.addEventListener('avatar-updated', onAvatarUpdated)
@@ -60,7 +62,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    setUser(null); setIsAdmin(false); setAvatar('spade'); setUnreadCount(0)
+    setUser(null); setIsAdmin(false); setIsMod(false); setAvatar('spade'); setUnreadCount(0)
     setMenuOpen(false)
   }
 
@@ -93,9 +95,9 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {isAdmin && (
+              {(isAdmin || isMod) && (
                 <Link href="/admin" className="px-3 py-1.5 text-sm text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium">
-                  ⚙️ Admin
+                  {isAdmin ? '⚙️ Admin' : '🛡️ Mod'}
                 </Link>
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
