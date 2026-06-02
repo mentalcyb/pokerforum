@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 
-export type AvatarId = 'spade' | 'heart' | 'diamond' | 'club' | 'chip' | 'ace'
+export type AvatarId = 'spade' | 'heart' | 'diamond' | 'club' | 'chip' | 'ace' | 'ninja'
 
 export const AVATARS: { id: AvatarId; label: string; bg: string; svg: React.ReactNode }[] = [
   {
@@ -76,6 +76,35 @@ export const AVATARS: { id: AvatarId; label: string; bg: string; svg: React.Reac
         <rect x="6" y="5" width="28" height="30" rx="4" fill="white" fillOpacity="0.15" stroke="white" strokeWidth="1.5"/>
         <text x="20" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold" fontFamily="serif">A</text>
         <text x="20" y="28" textAnchor="middle" fill="white" fontSize="10" fontFamily="serif">♠</text>
+      </svg>
+    ),
+  },
+  {
+    id: 'ninja',
+    label: 'Ninja',
+    bg: 'bg-slate-800',
+    svg: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        {/* Hood — dark wrap covering top and sides of head */}
+        <path d="M20 5C13 5 8 10 8 17V20C8 27.732 13.373 34 20 34C26.627 34 32 27.732 32 20V17C32 10 27 5 20 5Z" fill="white" fillOpacity="0.12"/>
+        {/* Face area — lighter oval */}
+        <ellipse cx="20" cy="20" rx="8" ry="9" fill="white" fillOpacity="0.18"/>
+        {/* Mask band — covers nose and mouth */}
+        <rect x="12" y="21" width="16" height="6" rx="2" fill="white" fillOpacity="0.85"/>
+        {/* Mask diagonal wrinkle lines */}
+        <line x1="15" y1="22.5" x2="15" y2="25.5" stroke="white" strokeOpacity="0.3" strokeWidth="1"/>
+        <line x1="18" y1="22" x2="18" y2="26" stroke="white" strokeOpacity="0.3" strokeWidth="1"/>
+        <line x1="21" y1="22" x2="21" y2="26" stroke="white" strokeOpacity="0.3" strokeWidth="1"/>
+        <line x1="24" y1="22.5" x2="24" y2="25.5" stroke="white" strokeOpacity="0.3" strokeWidth="1"/>
+        {/* Eyes — narrow, intense */}
+        <ellipse cx="16.5" cy="18" rx="2.5" ry="1.6" fill="white"/>
+        <ellipse cx="23.5" cy="18" rx="2.5" ry="1.6" fill="white"/>
+        {/* Pupils */}
+        <ellipse cx="16.5" cy="18" rx="1.2" ry="1.2" fill="white" fillOpacity="0.15"/>
+        <ellipse cx="23.5" cy="18" rx="1.2" ry="1.2" fill="white" fillOpacity="0.15"/>
+        {/* Card peeking from collar */}
+        <rect x="17" y="31" width="6" height="5" rx="1" fill="white" fillOpacity="0.5" transform="rotate(-8 17 31)"/>
+        <text x="19.5" y="35.5" textAnchor="middle" fill="white" fillOpacity="0.9" fontSize="4" fontWeight="bold" fontFamily="serif">♠</text>
       </svg>
     ),
   },
