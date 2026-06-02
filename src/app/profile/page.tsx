@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -16,7 +16,17 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
+
+  // Auto-reset success state after 3 s, cleaned up on unmount
+  useEffect(() => {
+    if (!success) return
+    successTimer.current = setTimeout(() => setSuccess(false), 3000)
+    return () => {
+      if (successTimer.current) clearTimeout(successTimer.current)
+    }
+  }, [success])
 
   useEffect(() => {
     async function load() {
@@ -65,7 +75,6 @@ export default function ProfilePage() {
     setSaving(false)
     setSuccess(true)
     window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
-    setTimeout(() => setSuccess(false), 3000)
   }
 
   if (loading) return (
