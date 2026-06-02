@@ -99,6 +99,14 @@ export const translations = {
     confirmDeleteCategory: 'კატეგორია წაიშლება. ყველა პოსტი დარჩება მაგრამ კატეგორიის გარეშე.',
     confirmDeleteTournament: 'ტურნირი წაიშლება?',
     catPostCount: 'პოსტი',
+    // user profile page
+    joinDate: 'გაწევრიანდა',
+    postCountLabel: 'პოსტი',
+    signature: 'ხელმოწერა',
+    signaturePlaceholder: 'მოკლე ტექსტი შენს შესახებ...',
+    recentPosts: 'ბოლო პოსტები',
+    noPostsYet: 'პოსტები ჯერ არ არის',
+    viewProfile: 'პროფილი',
     // online users
     onlineUsers: 'ონლაინ მომხმარებლები',
     noOnlineUsers: 'არავინ არ არის ონლაინ',
@@ -221,6 +229,14 @@ export const translations = {
     confirmDeleteCategory: 'Category will be deleted. Posts will remain but lose their category.',
     confirmDeleteTournament: 'Delete this tournament?',
     catPostCount: 'posts',
+    // user profile page
+    joinDate: 'Joined',
+    postCountLabel: 'Posts',
+    signature: 'Signature',
+    signaturePlaceholder: 'A short text about yourself...',
+    recentPosts: 'Recent Posts',
+    noPostsYet: 'No posts yet',
+    viewProfile: 'Profile',
     // online users
     onlineUsers: 'Online Users',
     noOnlineUsers: 'Nobody online right now',

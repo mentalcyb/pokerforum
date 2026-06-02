@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [avatar, setAvatar] = useState<AvatarId>('spade')
+  const [signature, setSignature] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -23,10 +24,11 @@ export default function ProfilePage() {
       if (!user) { router.push('/auth'); return }
       setUserId(user.id)
       const { data: profile } = await supabase
-        .from('profiles').select('username, avatar').eq('id', user.id).single()
+        .from('profiles').select('username, avatar, signature').eq('id', user.id).single()
       if (profile) {
         setUsername(profile.username || '')
         setAvatar((profile.avatar as AvatarId) || 'spade')
+        setSignature(profile.signature || '')
       }
       setLoading(false)
     }
@@ -41,7 +43,7 @@ export default function ProfilePage() {
 
     const { error: err } = await supabase
       .from('profiles')
-      .update({ avatar })
+      .update({ avatar, signature })
       .eq('id', userId)
 
     if (err) {
@@ -79,7 +81,7 @@ export default function ProfilePage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {t.chooseAvatar}
             </label>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-7 gap-2">
               {AVATARS.map(av => (
                 <button
                   key={av.id}
@@ -92,7 +94,7 @@ export default function ProfilePage() {
                   }`}
                   title={av.label}
                 >
-                  <PokerAvatar avatarId={av.id} size={48} />
+                  <PokerAvatar avatarId={av.id} size={44} />
                   {avatar === av.id && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-600 rounded-full flex items-center justify-center">
                       <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -103,6 +105,22 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Signature */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t.signature}
+            </label>
+            <textarea
+              value={signature}
+              onChange={e => setSignature(e.target.value)}
+              rows={3}
+              maxLength={200}
+              placeholder={t.signaturePlaceholder}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            />
+            <div className="text-xs text-gray-400 text-right mt-1">{signature.length}/200</div>
           </div>
 
           {error && (

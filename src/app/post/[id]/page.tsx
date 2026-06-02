@@ -11,9 +11,9 @@ import PokerAvatar from '@/components/PokerAvatar'
 type Post = {
   id: number; title: string; content: string; created_at: string
   reply_count: number; view_count: number; user_id: string
-  profiles: { username: string; avatar?: string }; categories: { name: string }
+  profiles: { username: string; avatar?: string; signature?: string }; categories: { name: string }
 }
-type Reply = { id: number; content: string; created_at: string; profiles: { username: string; avatar?: string } }
+type Reply = { id: number; content: string; created_at: string; profiles: { username: string; avatar?: string; signature?: string } }
 
 export default function PostPage() {
   const { t } = useApp()
@@ -41,11 +41,11 @@ export default function PostPage() {
 
   async function loadPost() {
     const { data: p } = await supabase.from('posts')
-      .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar), categories(name)')
+      .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature), categories(name)')
       .eq('id', params.id).single()
     setPost(p as any)
     const { data: r } = await supabase.from('replies')
-      .select('id, content, created_at, profiles(username, avatar)')
+      .select('id, content, created_at, profiles(username, avatar, signature)')
       .eq('post_id', params.id).order('created_at')
     setReplies((r as any) || [])
     if (p) await supabase.from('posts').update({ view_count: (p as any).view_count + 1 }).eq('id', params.id)
@@ -174,12 +174,21 @@ export default function PostPage() {
             </div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{post.title}</h1>
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-              <PokerAvatar avatarId={(post.profiles as any)?.avatar} size={24} />
-              <span className="font-medium text-gray-700 dark:text-gray-300">{(post.profiles as any)?.username}</span>
+              <Link href={`/user/${encodeURIComponent((post.profiles as any)?.username ?? '')}`}>
+                <PokerAvatar avatarId={(post.profiles as any)?.avatar} size={24} className="hover:opacity-80 transition-opacity" />
+              </Link>
+              <Link href={`/user/${encodeURIComponent((post.profiles as any)?.username ?? '')}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-600 transition-colors">
+                {(post.profiles as any)?.username}
+              </Link>
               <span>·</span>
               <span>{timeAgo(post.created_at)}</span>
             </div>
             <ContentRenderer content={post.content} className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed" />
+            {(post.profiles as any)?.signature && (
+              <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400 italic">
+                {(post.profiles as any).signature}
+              </div>
+            )}
             <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400">
               <span>{post.reply_count} {t.replies}</span>
               <span>{post.view_count} {t.views}</span>
@@ -192,11 +201,20 @@ export default function PostPage() {
       {replies.map(r => (
         <div key={r.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-3">
           <div className="flex items-center gap-2 mb-3">
-            <PokerAvatar avatarId={(r.profiles as any)?.avatar} size={28} />
-            <span className="text-sm font-medium text-gray-900 dark:text-white">{(r.profiles as any)?.username}</span>
+            <Link href={`/user/${encodeURIComponent((r.profiles as any)?.username ?? '')}`}>
+              <PokerAvatar avatarId={(r.profiles as any)?.avatar} size={28} className="hover:opacity-80 transition-opacity" />
+            </Link>
+            <Link href={`/user/${encodeURIComponent((r.profiles as any)?.username ?? '')}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 transition-colors">
+              {(r.profiles as any)?.username}
+            </Link>
             <span className="text-xs text-gray-400">{timeAgo(r.created_at)}</span>
           </div>
           <ContentRenderer content={r.content} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" />
+          {(r.profiles as any)?.signature && (
+            <div className="mt-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400 italic">
+              {(r.profiles as any).signature}
+            </div>
+          )}
         </div>
       ))}
 
