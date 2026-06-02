@@ -99,6 +99,10 @@ export const translations = {
     confirmDeleteCategory: 'კატეგორია წაიშლება. ყველა პოსტი დარჩება მაგრამ კატეგორიის გარეშე.',
     confirmDeleteTournament: 'ტურნირი წაიშლება?',
     catPostCount: 'პოსტი',
+    // online users
+    onlineUsers: 'ონლაინ მომხმარებლები',
+    noOnlineUsers: 'არავინ არ არის ონლაინ',
+    adminBadge: 'ადმინი',
     // profile
     profile: 'პროფილი',
     profileSettings: 'პროფილის პარამეტრები',
@@ -217,6 +221,10 @@ export const translations = {
     confirmDeleteCategory: 'Category will be deleted. Posts will remain but lose their category.',
     confirmDeleteTournament: 'Delete this tournament?',
     catPostCount: 'posts',
+    // online users
+    onlineUsers: 'Online Users',
+    noOnlineUsers: 'Nobody online right now',
+    adminBadge: 'Admin',
     // profile
     profile: 'Profile',
     profileSettings: 'Profile Settings',

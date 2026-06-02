@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
+import PokerAvatar from '@/components/PokerAvatar'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
@@ -12,6 +13,7 @@ type Category = { id: number; name: string; description: string; icon: string; p
 type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
 type Tournament = { id: number; name: string; date: string; buyin: string; status: string }
 type Stats = { members: number; posts: number; online: number }
+type OnlineUser = { id: string; username: string; avatar: string | null; is_admin: boolean }
 
 export default function HomePage() {
   const { t } = useApp()
@@ -19,6 +21,7 @@ export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -45,16 +48,22 @@ export default function HomePage() {
   }, [])
 
   async function loadStats() {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    const [{ count: memberCount }, { count: postCount }, { count: onlineCount }] = await Promise.all([
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    const [{ count: memberCount }, { count: postCount }, { data: onlineData }] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('last_seen', fiveMinutesAgo),
+      supabase.from('profiles')
+        .select('id, username, avatar, is_admin')
+        .gte('last_seen', thirtyMinutesAgo)
+        .order('is_admin', { ascending: false })
+        .order('username'),
     ])
+    const online = (onlineData as unknown as OnlineUser[]) ?? []
+    setOnlineUsers(online)
     setStats({
       members: memberCount ?? 0,
       posts: postCount ?? 0,
-      online: onlineCount ?? 0,
+      online: online.length,
     })
   }
 
@@ -187,6 +196,45 @@ export default function HomePage() {
                 </div>
               ))
             }
+          </div>
+
+          {/* Online users */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.onlineUsers}</h2>
+              <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+                {stats.online}
+              </span>
+            </div>
+            {loading || onlineUsers.length === 0 ? (
+              <div className="px-5 py-4 text-xs text-gray-400">
+                {loading ? t.loading : t.noOnlineUsers}
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {onlineUsers.map(u => (
+                  <div key={u.id} className="flex items-center gap-2.5 px-5 py-2.5">
+                    <div className="relative flex-shrink-0">
+                      <PokerAvatar avatarId={u.avatar} size={28} />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
+                    </div>
+                    <span className={`text-sm truncate ${
+                      u.is_admin
+                        ? 'font-bold text-gray-900 dark:text-white'
+                        : 'font-medium text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {u.username}
+                    </span>
+                    {u.is_admin && (
+                      <span className="ml-auto flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+                        {t.adminBadge}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-brand-600 rounded-2xl p-5 text-white">
