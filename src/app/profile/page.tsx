@@ -42,8 +42,12 @@ export default function ProfilePage() {
     const { error: err } = await supabase
       .from('profiles').update({ avatar }).eq('id', userId)
     if (err) { setError(err.message); setSaving(false); return }
-    setSuccess(true)
     setSaving(false)
+    setSuccess(true)
+    // Tell Navbar to update its avatar without a full page reload
+    window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
+    // Auto-clear success banner after 3 s
+    setTimeout(() => setSuccess(false), 3000)
   }
 
   if (loading) return (
@@ -96,21 +100,18 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {success && (
-            <div className="px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm">
-              {t.profileSaved}
-            </div>
-          )}
           {error && (
             <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">{error}</div>
           )}
 
           <button
             type="submit"
-            disabled={saving}
-            className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors text-sm"
+            disabled={saving || success}
+            className={`w-full py-2.5 disabled:opacity-75 text-white font-medium rounded-lg transition-colors text-sm ${
+              success ? 'bg-green-600' : 'bg-brand-600 hover:bg-brand-700'
+            }`}
           >
-            {saving ? t.loading : t.saveChanges}
+            {saving ? t.loading : success ? `✓ ${t.profileSaved}` : t.saveChanges}
           </button>
         </form>
       </div>

@@ -33,7 +33,15 @@ export default function Navbar() {
       if (session?.user) loadProfile(session.user.id)
       else { setIsAdmin(false); setAvatar('spade') }
     })
-    return () => subscription.unsubscribe()
+
+    // Listen for avatar changes saved from the profile page
+    const onAvatarUpdated = (e: Event) => setAvatar((e as CustomEvent).detail)
+    window.addEventListener('avatar-updated', onAvatarUpdated)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('avatar-updated', onAvatarUpdated)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
