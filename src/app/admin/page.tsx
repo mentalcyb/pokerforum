@@ -232,7 +232,7 @@ export default function AdminPage() {
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-brand-600 mb-0.5">{post.categories?.name}</div>
                       <Link href={`/post/${post.id}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 truncate block">{post.title}</Link>
-                      <div className="text-xs text-gray-400 mt-0.5">{post.profiles?.username}</div>
+                      <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} className="text-xs text-gray-400 hover:text-brand-600 transition-colors mt-0.5 block">{post.profiles?.username}</Link>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <button onClick={() => setPostEditing({ id: post.id, title: post.title, content: post.content })}
@@ -497,7 +497,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-medium ${user.is_banned ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>{user.username}</span>
+                    <Link href={`/user/${encodeURIComponent(user.username)}`} className={`text-sm font-medium hover:text-brand-600 transition-colors ${user.is_banned ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>{user.username}</Link>
                     {user.is_admin && <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded">{t.isAdmin}</span>}
                     {user.is_moderator && !user.is_admin && <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded">{t.isModerator}</span>}
                     {user.is_banned && <span className="px-1.5 py-0.5 text-xs bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded">{t.isBanned}</span>}

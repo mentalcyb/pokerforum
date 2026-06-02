@@ -258,12 +258,12 @@ export default function HomePage() {
             ) : (
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {onlineUsers.map(u => (
-                  <div key={u.id} className="flex items-center gap-2.5 px-5 py-2.5">
+                  <Link key={u.id} href={`/user/${encodeURIComponent(u.username)}`} className="flex items-center gap-2.5 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div className="relative flex-shrink-0">
                       <PokerAvatar avatarId={u.avatar} size={28} />
                       <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
                     </div>
-                    <span className={`text-sm truncate ${
+                    <span className={`text-sm truncate hover:text-brand-600 transition-colors ${
                       u.is_admin
                         ? 'font-bold text-gray-900 dark:text-white'
                         : 'font-medium text-gray-700 dark:text-gray-300'
@@ -275,7 +275,7 @@ export default function HomePage() {
                         {t.adminBadge}
                       </span>
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
