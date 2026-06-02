@@ -62,7 +62,8 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">♠</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="pokerforum.ge logo" width={36} height={36} className="rounded-full" />
           <span className="font-semibold text-gray-900 dark:text-white">{t.siteName}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://flagcdn.com/w20/ge.png" width={20} height={14} alt="GE" className="inline-block" />

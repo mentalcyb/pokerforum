@@ -1,20 +1,41 @@
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- White circle with red border -->
   <circle cx="50" cy="50" r="48" fill="white"/>
   <circle cx="50" cy="50" r="47" fill="none" stroke="#CC0000" stroke-width="2.5"/>
+
+  <!-- Georgian cross arms (faint background) -->
   <rect x="47.5" y="8" width="5" height="84" fill="#CC0000" opacity="0.12" rx="1"/>
   <rect x="8" y="47.5" width="84" height="5" fill="#CC0000" opacity="0.12" rx="1"/>
+
+  <!-- Main Georgian cross (bold) -->
   <rect x="47.5" y="20" width="5" height="60" fill="#CC0000" rx="1"/>
   <rect x="20" y="47.5" width="60" height="5" fill="#CC0000" rx="1"/>
+
+  <!-- Small Georgian cross — top-left quadrant -->
   <rect x="31" y="27" width="3" height="12" fill="#CC0000" rx="0.5"/>
   <rect x="27" y="31" width="12" height="3" fill="#CC0000" rx="0.5"/>
+
+  <!-- Small Georgian cross — top-right quadrant -->
   <rect x="66" y="27" width="3" height="12" fill="#CC0000" rx="0.5"/>
   <rect x="62" y="31" width="12" height="3" fill="#CC0000" rx="0.5"/>
+
+  <!-- Small Georgian cross — bottom-left quadrant -->
   <rect x="31" y="61" width="3" height="12" fill="#CC0000" rx="0.5"/>
   <rect x="27" y="65" width="12" height="3" fill="#CC0000" rx="0.5"/>
+
+  <!-- Small Georgian cross — bottom-right quadrant -->
   <rect x="66" y="61" width="3" height="12" fill="#CC0000" rx="0.5"/>
   <rect x="62" y="65" width="12" height="3" fill="#CC0000" rx="0.5"/>
+
+  <!-- Spade ♠ top-left (black) -->
   <text x="20" y="45" font-size="13" text-anchor="middle" fill="#111" font-family="serif">♠</text>
+
+  <!-- Heart ♥ top-right (red) -->
   <text x="80" y="45" font-size="13" text-anchor="middle" fill="#CC0000" font-family="serif">♥</text>
+
+  <!-- Diamond ♦ bottom-left (red) -->
   <text x="20" y="75" font-size="13" text-anchor="middle" fill="#CC0000" font-family="serif">♦</text>
+
+  <!-- Club ♣ bottom-right (black) -->
   <text x="80" y="75" font-size="13" text-anchor="middle" fill="#111" font-family="serif">♣</text>
 </svg>
