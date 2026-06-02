@@ -39,14 +39,32 @@ export default function ProfilePage() {
     e.preventDefault()
     if (!userId) return
     setSaving(true); setError(null); setSuccess(false)
-    const { error: err } = await supabase
-      .from('profiles').update({ avatar }).eq('id', userId)
-    if (err) { setError(err.message); setSaving(false); return }
+
+    console.log('[Profile] saving avatar:', avatar, 'for user:', userId)
+
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .update({ avatar })
+      .eq('id', userId)
+      .select()
+
+    console.log('[Profile] update result → data:', data, '| error:', err)
+
+    if (err) {
+      console.error('[Profile] save failed:', err.message, err.code, err.details)
+      setError(`${err.message} (code: ${err.code})`)
+      setSaving(false)
+      return
+    }
+
+    // Verify the value was actually written back
+    const { data: verify, error: verifyErr } = await supabase
+      .from('profiles').select('avatar').eq('id', userId).single()
+    console.log('[Profile] verify read-back → avatar:', verify?.avatar, '| error:', verifyErr)
+
     setSaving(false)
     setSuccess(true)
-    // Tell Navbar to update its avatar without a full page reload
     window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
-    // Auto-clear success banner after 3 s
     setTimeout(() => setSuccess(false), 3000)
   }
 
