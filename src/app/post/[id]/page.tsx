@@ -6,13 +6,14 @@ import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import ContentRenderer from '@/components/ContentRenderer'
 import ImageUploader from '@/components/ImageUploader'
+import PokerAvatar from '@/components/PokerAvatar'
 
 type Post = {
   id: number; title: string; content: string; created_at: string
   reply_count: number; view_count: number; user_id: string
-  profiles: { username: string }; categories: { name: string }
+  profiles: { username: string; avatar?: string }; categories: { name: string }
 }
-type Reply = { id: number; content: string; created_at: string; profiles: { username: string } }
+type Reply = { id: number; content: string; created_at: string; profiles: { username: string; avatar?: string } }
 
 export default function PostPage() {
   const { t } = useApp()
@@ -40,11 +41,11 @@ export default function PostPage() {
 
   async function loadPost() {
     const { data: p } = await supabase.from('posts')
-      .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username), categories(name)')
+      .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar), categories(name)')
       .eq('id', params.id).single()
     setPost(p as any)
     const { data: r } = await supabase.from('replies')
-      .select('id, content, created_at, profiles(username)')
+      .select('id, content, created_at, profiles(username, avatar)')
       .eq('post_id', params.id).order('created_at')
     setReplies((r as any) || [])
     if (p) await supabase.from('posts').update({ view_count: (p as any).view_count + 1 }).eq('id', params.id)
@@ -172,8 +173,11 @@ export default function PostPage() {
               )}
             </div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{post.title}</h1>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              {t.postedBy} <span className="font-medium text-gray-700 dark:text-gray-300">{(post.profiles as any)?.username}</span> · {timeAgo(post.created_at)}
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <PokerAvatar avatarId={(post.profiles as any)?.avatar} size={24} />
+              <span className="font-medium text-gray-700 dark:text-gray-300">{(post.profiles as any)?.username}</span>
+              <span>·</span>
+              <span>{timeAgo(post.created_at)}</span>
             </div>
             <ContentRenderer content={post.content} className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed" />
             <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400">
@@ -188,9 +192,7 @@ export default function PostPage() {
       {replies.map(r => (
         <div key={r.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-3">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center text-brand-700 dark:text-brand-400 text-xs font-bold">
-              {(r.profiles as any)?.username?.[0]?.toUpperCase()}
-            </div>
+            <PokerAvatar avatarId={(r.profiles as any)?.avatar} size={28} />
             <span className="text-sm font-medium text-gray-900 dark:text-white">{(r.profiles as any)?.username}</span>
             <span className="text-xs text-gray-400">{timeAgo(r.created_at)}</span>
           </div>

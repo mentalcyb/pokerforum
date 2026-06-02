@@ -4,40 +4,44 @@ import { useApp } from '@/contexts/AppContext'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import PokerAvatar from '@/components/PokerAvatar'
 
 export default function Navbar() {
   const { t, lang, setLang, dark, toggleDark } = useApp()
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [avatar, setAvatar] = useState<string>('spade')
   const supabase = createClient()
+
+  async function loadProfile(uid: string) {
+    const { data: p } = await supabase
+      .from('profiles').select('is_admin, avatar').eq('id', uid).single()
+    if (p) {
+      setIsAdmin(p.is_admin || false)
+      setAvatar(p.avatar || 'spade')
+    }
+    supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(() => {})
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
-      if (data.user) {
-        supabase.from('profiles').select('is_admin').eq('id', data.user.id).single().then(({ data: p }) => {
-          setIsAdmin(p?.is_admin || false)
-        })
-        supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', data.user.id).then(() => {})
-      }
+      if (data.user) loadProfile(data.user.id)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        supabase.from('profiles').select('is_admin').eq('id', session.user.id).single().then(({ data: p }) => {
-          setIsAdmin(p?.is_admin || false)
-        })
-      } else {
-        setIsAdmin(false)
-      }
+      if (session?.user) loadProfile(session.user.id)
+      else { setIsAdmin(false); setAvatar('spade') }
     })
     return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setUser(null)
     setIsAdmin(false)
+    setAvatar('spade')
   }
 
   return (
@@ -75,6 +79,10 @@ export default function Navbar() {
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
                 + {t.newPost}
+              </Link>
+              {/* Avatar → profile link */}
+              <Link href="/profile" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity" title={t.profile}>
+                <PokerAvatar avatarId={avatar} size={30} />
               </Link>
               <button onClick={handleLogout} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t.logout}
