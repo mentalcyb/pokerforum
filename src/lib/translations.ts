@@ -107,6 +107,10 @@ export const translations = {
     // edit post
     editPost: 'პოსტის ჩასწორება',
     backToAdmin: '← ადმინ პანელი',
+    editPostBtn: 'რედაქტირება',
+    editPostTitle: 'პოსტის რედაქტირება',
+    saveChanges: 'შენახვა',
+    editSuccess: 'პოსტი განახლდა!',
   },
   en: {
     // branding
@@ -216,6 +220,10 @@ export const translations = {
     // edit post
     editPost: 'Edit Post',
     backToAdmin: '← Admin Panel',
+    editPostBtn: 'Edit',
+    editPostTitle: 'Edit Post',
+    saveChanges: 'Save changes',
+    editSuccess: 'Post updated!',
   }
 }
 
