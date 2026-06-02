@@ -23,6 +23,8 @@ export default function PostPage() {
   const [replyText, setReplyText] = useState('')
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
 
   // Edit state
   const [editing, setEditing] = useState(false)
@@ -40,15 +42,48 @@ export default function PostPage() {
   }, [params.id])
 
   async function loadPost() {
-    const { data: p } = await supabase.from('posts')
+    setPageLoading(true)
+    setPageError(null)
+
+    const { data: p, error: pErr } = await supabase.from('posts')
       .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature), categories(name)')
       .eq('id', params.id).single()
-    setPost(p as any)
-    const { data: r } = await supabase.from('replies')
+
+    if (pErr) {
+      console.error('[PostPage] post fetch error:', pErr.message, pErr.code)
+      // Retry without signature in case the column doesn't exist yet
+      const { data: p2, error: p2Err } = await supabase.from('posts')
+        .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar), categories(name)')
+        .eq('id', params.id).single()
+      if (p2Err) {
+        setPageError(p2Err.message)
+        setPageLoading(false)
+        return
+      }
+      setPost(p2 as any)
+    } else {
+      setPost(p as any)
+    }
+
+    const { data: r, error: rErr } = await supabase.from('replies')
       .select('id, content, created_at, profiles(username, avatar, signature)')
       .eq('post_id', params.id).order('created_at')
-    setReplies((r as any) || [])
-    if (p) await supabase.from('posts').update({ view_count: (p as any).view_count + 1 }).eq('id', params.id)
+
+    if (rErr) {
+      // Retry without signature
+      const { data: r2 } = await supabase.from('replies')
+        .select('id, content, created_at, profiles(username, avatar)')
+        .eq('post_id', params.id).order('created_at')
+      setReplies((r2 as any) || [])
+    } else {
+      setReplies((r as any) || [])
+    }
+
+    const current = p || null
+    if (current) {
+      await supabase.from('posts').update({ view_count: (current as any).view_count + 1 }).eq('id', params.id)
+    }
+    setPageLoading(false)
   }
 
   function startEditing() {
@@ -101,7 +136,9 @@ export default function PostPage() {
     return `${Math.floor(hrs / 24)} ${t.day} ${t.ago}`
   }
 
-  if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  if (pageLoading) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  if (pageError) return <div className="flex items-center justify-center min-h-screen text-red-400">Error: {pageError}</div>
+  if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
 
   const isAuthor = user && user.id === post.user_id
 
