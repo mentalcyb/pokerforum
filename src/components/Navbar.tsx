@@ -98,7 +98,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/auth" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="/auth?mode=login" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t.login}
               </Link>
               <Link href="/auth?mode=register" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">

@@ -27,6 +27,11 @@ function AuthForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
+
+  // Sync mode when URL param changes (e.g. navbar link navigates to ?mode=login)
+  useEffect(() => {
+    setMode(params.get('mode') === 'register' ? 'register' : 'login')
+  }, [params])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
