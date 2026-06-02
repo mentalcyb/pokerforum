@@ -171,7 +171,10 @@ export default function HomePage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-brand-600 font-medium mb-1">{post.categories?.name}</div>
                   <div className="font-medium text-gray-900 dark:text-white text-sm leading-snug">{post.title}</div>
-                  <div className="text-xs text-gray-400 mt-1">{post.profiles?.username} · {timeAgo(post.created_at)}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} className="hover:text-brand-600 transition-colors">{post.profiles?.username}</Link>
+                    {' · '}{timeAgo(post.created_at)}
+                  </div>
                 </div>
                 <div className="text-right flex-shrink-0 text-xs text-gray-400 space-y-1">
                   <div>{post.reply_count} {t.replies}</div>

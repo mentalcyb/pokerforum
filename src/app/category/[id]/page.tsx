@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
+import PokerAvatar from '@/components/PokerAvatar'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
@@ -26,7 +27,7 @@ export default function CategoryPage() {
         supabase.from('categories').select('*').eq('id', params.id).single(),
         supabase
           .from('posts')
-          .select('id, title, created_at, reply_count, view_count, profiles(username)')
+          .select('id, title, created_at, reply_count, view_count, profiles(username, avatar)')
           .eq('category_id', params.id)
           .order('created_at', { ascending: false }),
       ])
@@ -101,13 +102,14 @@ export default function CategoryPage() {
               href={`/post/${post.id}`}
               className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0"
             >
-              <div className="w-9 h-9 bg-brand-50 dark:bg-brand-900/30 rounded-full flex items-center justify-center text-brand-600 text-sm font-bold flex-shrink-0">
-                {post.profiles?.username?.[0]?.toUpperCase() ?? '?'}
-              </div>
+              <PokerAvatar avatarId={(post.profiles as any)?.avatar} size={36} />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-white text-sm leading-snug truncate">{post.title}</div>
                 <div className="text-xs text-gray-400 mt-0.5">
-                  {post.profiles?.username ?? 'unknown'} · {timeAgo(post.created_at)}
+                  <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} onClick={e => e.stopPropagation()} className="hover:text-brand-600 transition-colors">
+                    {post.profiles?.username ?? 'unknown'}
+                  </Link>
+                  {' · '}{timeAgo(post.created_at)}
                 </div>
               </div>
               <div className="text-right flex-shrink-0 text-xs text-gray-400 space-y-0.5">

@@ -11,6 +11,7 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [avatar, setAvatar] = useState<string>('spade')
+  const [unreadCount, setUnreadCount] = useState(0)
   const supabase = createClient()
 
   async function loadProfile(uid: string) {
@@ -21,6 +22,10 @@ export default function Navbar() {
       setAvatar(p.avatar || 'spade')
     }
     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(() => {})
+    // Unread message count
+    supabase.from('messages').select('id', { count: 'exact', head: true })
+      .eq('receiver_id', uid).eq('read', false)
+      .then(({ count }) => setUnreadCount(count ?? 0))
   }
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
-      else { setIsAdmin(false); setAvatar('spade') }
+      else { setIsAdmin(false); setAvatar('spade'); setUnreadCount(0) }
     })
 
     // Listen for avatar changes saved from the profile page
@@ -50,6 +55,7 @@ export default function Navbar() {
     setUser(null)
     setIsAdmin(false)
     setAvatar('spade')
+    setUnreadCount(0)
   }
 
   return (
@@ -87,6 +93,17 @@ export default function Navbar() {
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
                 + {t.newPost}
+              </Link>
+              {/* Inbox with unread badge */}
+              <Link href="/inbox" className="relative flex items-center justify-center w-8 h-8 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400" title={t.inbox}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-600 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
               {/* Avatar → profile link */}
               <Link href="/profile" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity" title={t.profile}>
