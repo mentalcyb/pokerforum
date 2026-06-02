@@ -106,7 +106,6 @@ export const translations = {
     noMessages: 'შეტყობინებები არ არის',
     messageSent: 'გაგზავნილია',
     messageFrom: 'გამგზავნი',
-    reply: 'უპასუხე',
     conversation: 'კონვერსაცია',
     unread: 'წაუკითხავი',
     markRead: 'წაკითხულად მონიშვნა',
@@ -115,14 +114,12 @@ export const translations = {
     postCountLabel: 'პოსტი',
     signature: 'ხელმოწერა',
     signaturePlaceholder: 'მოკლე ტექსტი შენს შესახებ...',
-    recentPosts: 'ბოლო პოსტები',
-    noPostsYet: 'პოსტები ჯერ არ არის',
     viewProfile: 'პროფილი',
     // online users
     onlineUsers: 'ონლაინ მომხმარებლები',
     noOnlineUsers: 'არავინ არ არის ონლაინ',
     adminBadge: 'ადმინი',
-    // profile
+    // profile settings
     profile: 'პროფილი',
     profileSettings: 'პროფილის პარამეტრები',
     chooseAvatar: 'აირჩიე ავატარი',
@@ -247,7 +244,6 @@ export const translations = {
     noMessages: 'No messages yet',
     messageSent: 'Sent',
     messageFrom: 'From',
-    reply: 'Reply',
     conversation: 'Conversation',
     unread: 'Unread',
     markRead: 'Mark as read',
@@ -256,14 +252,12 @@ export const translations = {
     postCountLabel: 'Posts',
     signature: 'Signature',
     signaturePlaceholder: 'A short text about yourself...',
-    recentPosts: 'Recent Posts',
-    noPostsYet: 'No posts yet',
     viewProfile: 'Profile',
     // online users
     onlineUsers: 'Online Users',
     noOnlineUsers: 'Nobody online right now',
     adminBadge: 'Admin',
-    // profile
+    // profile settings
     profile: 'Profile',
     profileSettings: 'Profile Settings',
     chooseAvatar: 'Choose your avatar',
