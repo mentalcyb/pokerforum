@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -7,6 +7,7 @@ import Link from 'next/link'
 import ContentRenderer from '@/components/ContentRenderer'
 import ImageUploader from '@/components/ImageUploader'
 import PokerAvatar from '@/components/PokerAvatar'
+import EmojiPicker from '@/components/EmojiPicker'
 
 type Post = {
   id: number; title: string; content: string; created_at: string
@@ -25,6 +26,7 @@ export default function PostPage() {
   const [loading, setLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [pageError, setPageError] = useState<string | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Edit state
   const [editing, setEditing] = useState(false)
@@ -119,8 +121,20 @@ export default function PostPage() {
     setLoading(false)
   }
 
-  function insertAtCursor(url: string) {
-    setReplyText(prev => prev + (prev && !prev.endsWith('\n') ? '\n' : '') + url + '\n')
+  function insertAtCursor(text: string) {
+    const ta = textareaRef.current
+    if (ta) {
+      const start = ta.selectionStart
+      const end = ta.selectionEnd
+      setReplyText(prev => prev.slice(0, start) + text + prev.slice(end))
+      // Restore cursor after emoji
+      setTimeout(() => {
+        ta.selectionStart = ta.selectionEnd = start + text.length
+        ta.focus()
+      }, 0)
+    } else {
+      setReplyText(prev => prev + text)
+    }
   }
 
   function insertIntoEdit(url: string) {
@@ -261,6 +275,7 @@ export default function PostPage() {
           <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-3">{t.reply}</h3>
           <form onSubmit={handleReply} className="space-y-3">
             <textarea
+              ref={textareaRef}
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
               rows={4}
@@ -268,7 +283,10 @@ export default function PostPage() {
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
             />
             <div className="flex items-center justify-between gap-3">
-              <ImageUploader userId={user.id} onInsert={insertAtCursor} />
+              <div className="flex items-center gap-2">
+                <EmojiPicker onSelect={emoji => insertAtCursor(emoji)} />
+                <ImageUploader userId={user.id} onInsert={insertAtCursor} />
+              </div>
               <button
                 type="submit"
                 disabled={loading}
