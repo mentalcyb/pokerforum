@@ -10,12 +10,16 @@ export default function ProfilePage() {
   const { t } = useApp()
   const router = useRouter()
   const [username, setUsername] = useState('')
+  const [newUsername, setNewUsername] = useState('')
   const [avatar, setAvatar] = useState<AvatarId>('spade')
   const [signature, setSignature] = useState('')
+  const [joinDate, setJoinDate] = useState('')
+  const [postCount, setPostCount] = useState(0)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -23,13 +27,22 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth'); return }
       setUserId(user.id)
-      const { data: profile } = await supabase
-        .from('profiles').select('username, avatar, signature').eq('id', user.id).single()
+
+      const [{ data: profile }, { count }] = await Promise.all([
+        supabase.from('profiles').select('username, avatar, signature, created_at').eq('id', user.id).single(),
+        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      ])
+
       if (profile) {
         setUsername(profile.username || '')
+        setNewUsername(profile.username || '')
         setAvatar((profile.avatar as AvatarId) || 'spade')
         setSignature(profile.signature || '')
+        if (profile.created_at) {
+          setJoinDate(new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))
+        }
       }
+      setPostCount(count ?? 0)
       setLoading(false)
     }
     load()
@@ -39,11 +52,22 @@ export default function ProfilePage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!userId) return
+    setUsernameError(null)
     setSaving(true); setError(null)
+
+    const trimmed = newUsername.trim()
+    if (!trimmed) { setUsernameError('Username cannot be empty'); setSaving(false); return }
+    if (trimmed.length < 3) { setUsernameError('Username must be at least 3 characters'); setSaving(false); return }
+
+    // Check username taken (only if changed)
+    if (trimmed !== username) {
+      const { data: existing } = await supabase.from('profiles').select('id').eq('username', trimmed).neq('id', userId).single()
+      if (existing) { setUsernameError('Username already taken'); setSaving(false); return }
+    }
 
     const { error: err } = await supabase
       .from('profiles')
-      .update({ avatar, signature })
+      .update({ avatar, signature, username: trimmed })
       .eq('id', userId)
 
     if (err) {
@@ -52,6 +76,7 @@ export default function ProfilePage() {
       return
     }
 
+    setUsername(trimmed)
     setSaving(false)
     window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
     router.push('/')
@@ -61,21 +86,54 @@ export default function ProfilePage() {
     <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
   )
 
+  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
       <Link href="/" className="text-brand-600 text-sm hover:underline mb-4 block">← {t.home}</Link>
 
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+
         {/* Header */}
         <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
           <PokerAvatar avatarId={avatar} size={64} />
-          <div>
-            <div className="text-lg font-bold text-gray-900 dark:text-white">{username}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-lg font-bold text-gray-900 dark:text-white truncate">{username}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{t.profileSettings}</div>
           </div>
         </div>
 
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
+            <div className="text-xs text-gray-400 mb-0.5">📅 {t.joinDate}</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">{joinDate || '—'}</div>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
+            <div className="text-xs text-gray-400 mb-0.5">📝 {t.postCountLabel}</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">{postCount}</div>
+          </div>
+        </div>
+
         <form onSubmit={handleSave} className="space-y-6">
+
+          {/* Username */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t.username}
+            </label>
+            <input
+              type="text"
+              value={newUsername}
+              onChange={e => setNewUsername(e.target.value)}
+              required
+              minLength={3}
+              maxLength={30}
+              className={`${inputClass} ${usernameError ? 'border-red-400 focus:ring-red-400' : ''}`}
+            />
+            {usernameError && <p className="mt-1 text-xs text-red-500">{usernameError}</p>}
+          </div>
+
           {/* Avatar picker */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -118,7 +176,7 @@ export default function ProfilePage() {
               rows={3}
               maxLength={200}
               placeholder={t.signaturePlaceholder}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className={`${inputClass} resize-none`}
             />
             <div className="text-xs text-gray-400 text-right mt-1">{signature.length}/200</div>
           </div>
