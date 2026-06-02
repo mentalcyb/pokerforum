@@ -52,6 +52,7 @@ export default function ProfilePage() {
 
     setSaving(false)
     window.dispatchEvent(new CustomEvent('avatar-updated', { detail: avatar }))
+    router.push('/')
   }
 
   if (loading) return (
