@@ -49,16 +49,16 @@ export default function HomePage() {
   }, [])
 
   async function loadStats() {
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
-    const [{ count: memberCount }, { count: postCount }, { data: onlineData }] = await Promise.all([
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const [{ count: memberCount }, { count: postCount }, { data: onlineData, error: onlineErr }] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('profiles')
         .select('id, username, avatar, is_admin')
-        .gte('last_seen', thirtyMinutesAgo)
-        .order('is_admin', { ascending: false })
+        .gte('last_seen', fiveMinutesAgo)
         .order('username'),
     ])
+    if (onlineErr) console.warn('[online users] query error:', onlineErr.message, onlineErr.code)
     const online = (onlineData as unknown as OnlineUser[]) ?? []
     setOnlineUsers(online)
     setStats({
