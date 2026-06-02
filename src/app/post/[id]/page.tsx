@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
@@ -19,6 +19,7 @@ type Reply = { id: number; content: string; created_at: string; user_id?: string
 export default function PostPage() {
   const { t } = useApp()
   const params = useParams()
+  const router = useRouter()
   const [post, setPost] = useState<Post | null>(null)
   const [replies, setReplies] = useState<Reply[]>([])
   const [replyText, setReplyText] = useState('')
