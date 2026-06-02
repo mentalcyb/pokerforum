@@ -115,6 +115,8 @@ export const translations = {
     signature: 'ხელმოწერა',
     signaturePlaceholder: 'მოკლე ტექსტი შენს შესახებ...',
     viewProfile: 'პროფილი',
+    // clock
+    tbilisiTime: 'თბილისის დრო',
     // online users
     onlineUsers: 'ონლაინ მომხმარებლები',
     noOnlineUsers: 'არავინ არ არის ონლაინ',
@@ -253,6 +255,8 @@ export const translations = {
     signature: 'Signature',
     signaturePlaceholder: 'A short text about yourself...',
     viewProfile: 'Profile',
+    // clock
+    tbilisiTime: 'Tbilisi Time',
     // online users
     onlineUsers: 'Online Users',
     noOnlineUsers: 'Nobody online right now',

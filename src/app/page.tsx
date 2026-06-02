@@ -23,8 +23,10 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState(new Date())
   const supabase = createClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const clockRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -42,8 +44,11 @@ export default function HomePage() {
 
     // Refresh stats every 30 seconds
     intervalRef.current = setInterval(loadStats, 30000)
+    // Tick clock every second
+    clockRef.current = setInterval(() => setNow(new Date()), 1000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
+      if (clockRef.current) clearInterval(clockRef.current)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -86,6 +91,24 @@ export default function HomePage() {
     setTournaments(ts || [])
     await loadStats()
     setLoading(false)
+  }
+
+  function getTbilisiTime(date: Date) {
+    // UTC+4
+    const utc = date.getTime() + date.getTimezoneOffset() * 60000
+    const tbilisi = new Date(utc + 4 * 3600000)
+    const hh = String(tbilisi.getHours()).padStart(2, '0')
+    const mm = String(tbilisi.getMinutes()).padStart(2, '0')
+    const ss = String(tbilisi.getSeconds()).padStart(2, '0')
+    const day = tbilisi.getDate()
+    const year = tbilisi.getFullYear()
+    const months = ['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი']
+    const days = ['კვირა','ორშაბათი','სამშაბათი','ოთხშაბათი','ხუთშაბათი','პარასკევი','შაბათი']
+    return {
+      time: `${hh}:${mm}:${ss}`,
+      date: `${day} ${months[tbilisi.getMonth()]} ${year}`,
+      weekday: days[tbilisi.getDay()],
+    }
   }
 
   function timeAgo(dateStr: string) {
@@ -187,6 +210,23 @@ export default function HomePage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+
+          {/* Live clock */}
+          {(() => {
+            const { time, date, weekday } = getTbilisiTime(now)
+            return (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 px-5 py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">🕐 {t.tbilisiTime}</h2>
+                  <span className="text-xs text-gray-400">UTC+4</span>
+                </div>
+                <div className="text-3xl font-mono font-bold text-brand-600 tracking-wider">{time}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{weekday}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{date}</div>
+              </div>
+            )
+          })()}
+
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>

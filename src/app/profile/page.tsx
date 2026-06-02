@@ -39,7 +39,11 @@ export default function ProfilePage() {
         setAvatar((profile.avatar as AvatarId) || 'spade')
         setSignature(profile.signature || '')
         if (profile.created_at) {
-          setJoinDate(new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))
+          const d = new Date(profile.created_at)
+          const day = d.getDate()
+          const year = d.getFullYear()
+          const months = ['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი']
+          setJoinDate(`${day} ${months[d.getMonth()]} ${year}`)
         }
       }
       setPostCount(count ?? 0)
