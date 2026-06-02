@@ -26,12 +26,12 @@ export default function ImageUploader({ userId, onInsert }: Props) {
     const path = `${userId}/${Date.now()}.${ext}`
 
     const { error: upErr } = await supabase.storage
-      .from('forum-images')
+      .from('images')
       .upload(path, file, { cacheControl: '3600', upsert: false })
 
     if (upErr) { setError(upErr.message); setUploading(false); return }
 
-    const { data } = supabase.storage.from('forum-images').getPublicUrl(path)
+    const { data } = supabase.storage.from('images').getPublicUrl(path)
     onInsert(data.publicUrl)
     setUploading(false)
   }
