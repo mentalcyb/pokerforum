@@ -11,6 +11,9 @@ export const metadata: Metadata = {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
   },
+  verification: {
+    google: 'f8HPZ7bi689zW3MS7Oqc3Y3LLp0bFlsCHBFCLrh39EI',
+  },
   openGraph: {
     title: 'პოკერის ფორუმი | pokerforum.ge',
     description: 'ქართული პოკერის მთავარი ფორუმი',
