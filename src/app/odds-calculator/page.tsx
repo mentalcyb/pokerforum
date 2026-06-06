@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 // ── Card types & utilities ─────────────────────────────────────────────────
 
@@ -15,8 +15,15 @@ const RANK_LABEL: Record<number, string> = {
   10: 'T', 11: 'J', 12: 'Q', 13: 'K', 14: 'A',
 }
 const SUIT_SYMBOL: Record<Suit, string> = { h: '♥', d: '♦', c: '♣', s: '♠' }
-const SUIT_COLOR: Record<Suit, string> = {
-  h: 'text-red-600', d: 'text-red-600', c: 'text-gray-800 dark:text-gray-200', s: 'text-gray-800 dark:text-gray-200',
+
+function suitColor(suit: Suit, fourColor: boolean): string {
+  if (suit === 'h') return 'text-red-600'
+  if (suit === 's') return 'text-gray-800 dark:text-gray-200'
+  if (fourColor) {
+    if (suit === 'd') return 'text-blue-600'
+    if (suit === 'c') return 'text-green-600'
+  }
+  return suit === 'd' ? 'text-red-600' : 'text-gray-800 dark:text-gray-200'
 }
 
 function parseCard(s: string): Card | null {
@@ -164,12 +171,14 @@ function CardPicker({
   blocked,
   maxCards,
   label,
+  fourColor,
 }: {
   selected: Card[]
   onChange: (cards: Card[]) => void
   blocked: Set<string>
   maxCards: number
   label: string
+  fourColor: boolean
 }) {
   const selectedKeys = new Set(selected.map(cardKey))
 
@@ -206,10 +215,10 @@ function CardPicker({
                     : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20'
                   }`}
               >
-                <span className={isSelected ? 'text-white' : SUIT_COLOR[suit]}>
+                <span className={isSelected ? 'text-white' : suitColor(suit, fourColor)}>
                   {rankStr}
                 </span>
-                <span className={`text-[10px] ${isSelected ? 'text-white' : SUIT_COLOR[suit]}`}>
+                <span className={`text-[10px] ${isSelected ? 'text-white' : suitColor(suit, fourColor)}`}>
                   {SUIT_SYMBOL[suit]}
                 </span>
               </button>
@@ -222,7 +231,7 @@ function CardPicker({
           <span
             key={cardKey(c)}
             onClick={() => toggle(c)}
-            className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-sm font-bold cursor-pointer bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 ${SUIT_COLOR[c.suit]}`}
+            className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-sm font-bold cursor-pointer bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 ${suitColor(c.suit, fourColor)}`}
           >
             {RANK_LABEL[c.rank]}{SUIT_SYMBOL[c.suit]}
           </span>
@@ -258,6 +267,18 @@ export default function OddsCalculatorPage() {
   const [results, setResults] = useState<SimResult[] | null>(null)
   const [resultStreet, setResultStreet] = useState('')
   const [running, setRunning] = useState(false)
+  const [fourColor, setFourColor] = useState(false)
+
+  useEffect(() => {
+    setFourColor(localStorage.getItem('odds-4color') === '1')
+  }, [])
+
+  function toggleFourColor() {
+    setFourColor(v => {
+      localStorage.setItem('odds-4color', v ? '0' : '1')
+      return !v
+    })
+  }
 
   const holeCardCount = game === 'holdem' ? 2 : 4
   const board = [...flop, ...turn, ...river]
@@ -353,6 +374,25 @@ export default function OddsCalculatorPage() {
               ))}
             </div>
           </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Card Colors</div>
+            <button
+              onClick={toggleFourColor}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                fourColor
+                  ? 'bg-brand-600 border-brand-600 text-white'
+                  : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <span className="flex gap-0.5 text-xs font-bold">
+                <span className="text-gray-800 dark:text-gray-200">♠</span>
+                <span className="text-red-600">♥</span>
+                <span className={fourColor ? 'text-blue-600' : 'text-red-600'}>♦</span>
+                <span className={fourColor ? 'text-green-600' : 'text-gray-800 dark:text-gray-200'}>♣</span>
+              </span>
+              4-Color
+            </button>
+          </div>
         </div>
       </div>
 
@@ -369,6 +409,7 @@ export default function OddsCalculatorPage() {
                 blocked={otherUsed}
                 maxCards={holeCardCount}
                 label={`Player ${i + 1} — ${holeCardCount} hole cards`}
+                fourColor={fourColor}
               />
             </div>
           )
@@ -409,6 +450,7 @@ export default function OddsCalculatorPage() {
               blocked={boardBlocked(flop)}
               maxCards={3}
               label="Flop — 3 cards"
+              fourColor={fourColor}
             />
           </div>
 
@@ -420,6 +462,7 @@ export default function OddsCalculatorPage() {
               blocked={boardBlocked(turn)}
               maxCards={1}
               label={`Turn — 1 card${flop.length < 3 ? ' (deal flop first)' : ''}`}
+              fourColor={fourColor}
             />
           </div>
 
@@ -431,6 +474,7 @@ export default function OddsCalculatorPage() {
               blocked={boardBlocked(river)}
               maxCards={1}
               label={`River — 1 card${turn.length < 1 ? ' (deal turn first)' : ''}`}
+              fourColor={fourColor}
             />
           </div>
         </div>
@@ -479,7 +523,7 @@ export default function OddsCalculatorPage() {
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">Player {i + 1}</span>
                     <span className="flex gap-1">
                       {hand.map(c => (
-                        <span key={cardKey(c)} className={`text-sm font-bold ${SUIT_COLOR[c.suit]}`}>
+                        <span key={cardKey(c)} className={`text-sm font-bold ${suitColor(c.suit, fourColor)}`}>
                           {RANK_LABEL[c.rank]}{SUIT_SYMBOL[c.suit]}
                         </span>
                       ))}
