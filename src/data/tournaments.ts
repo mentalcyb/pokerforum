@@ -15,20 +15,6 @@ export type Tournament = {
 
 const tournaments: Tournament[] = [
   {
-    id: 1,
-    name: 'EPT Monte-Carlo',
-    series: 'EPT',
-    location: 'Monte-Carlo, Monaco',
-    country: 'MC',
-    flag: '🇲🇨',
-    dates: 'Apr 2026 (TBC)',
-    buyin: '€5,300',
-    guarantee: '€5,000,000',
-    currency: 'EUR',
-    website: 'https://www.pokerstars.com/poker/live/european-poker-tour/',
-    notes: 'Main Event + 20+ side events',
-  },
-  {
     id: 2,
     name: 'EPT Barcelona',
     series: 'EPT',
