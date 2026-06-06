@@ -92,7 +92,7 @@ export default function HandAnalyzerPage() {
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl">🤖</div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">AI Hand Analyzer</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Powered by Claude · PokerStars &amp; GGPoker formats</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">PokerStars &amp; GGPoker formats</p>
           </div>
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">
@@ -202,6 +202,10 @@ export default function HandAnalyzerPage() {
           </div>
         </div>
       )}
+
+      <p className="mt-8 text-center text-xs text-gray-400 dark:text-gray-600">
+        Powered by Claude AI · Built with Claude Code
+      </p>
     </div>
   )
 }

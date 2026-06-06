@@ -308,7 +308,7 @@ export default function OddsCalculatorPage() {
         <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl">🎲</div>
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Poker Odds Calculator</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Hold'em &amp; Omaha · Monte Carlo simulation (7 500 runs)</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Hold'em &amp; Omaha</p>
         </div>
       </div>
 
@@ -408,6 +408,10 @@ export default function OddsCalculatorPage() {
       </button>
 
       {/* Results */}
+      <p className="mt-2 mb-6 text-center text-xs text-gray-400 dark:text-gray-600">
+        Powered by Claude AI · Built with Claude Code
+      </p>
+
       {results && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -449,7 +453,7 @@ export default function OddsCalculatorPage() {
             )
           })}
           <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs text-gray-400 text-center">
-            Based on 7,500 Monte Carlo simulations · Results are probabilistic
+            Results are probabilistic estimates
           </div>
         </div>
       )}
