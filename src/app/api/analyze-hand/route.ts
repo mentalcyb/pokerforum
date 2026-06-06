@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 type Action = { street: string; player: string; action: string; amount?: string }
 
@@ -105,14 +105,15 @@ export async function POST(req: NextRequest) {
     if (!handHistory?.trim()) {
       return NextResponse.json({ error: 'No hand history provided' }, { status: 400 })
     }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'AI analysis is not configured. Please set GEMINI_API_KEY.' }, { status: 503 })
+    }
+
     const langInstruction = lang === 'ka'
       ? 'Respond entirely in Georgian language (ქართული).'
       : ''
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'AI analysis is not configured. Please set ANTHROPIC_API_KEY.' }, { status: 503 })
-    }
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const p = parseHandHistory(handHistory)
 
     const streets = ['preflop', 'flop', 'turn', 'river']
@@ -156,19 +157,13 @@ Respond with ONLY valid JSON (no markdown, no code blocks) matching this exact s
 
 Status must be "ok", "warning", or "error". Include only streets that appear in the hand. Set missing streets to null.`
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
 
-    const content = message.content[0]
-    if (content.type !== 'text') {
-      return NextResponse.json({ error: 'Unexpected AI response type' }, { status: 500 })
-    }
-
-    // Extract JSON even if wrapped in markdown
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/)
+    // Extract JSON even if wrapped in markdown code fences
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return NextResponse.json({ error: 'Could not parse AI response' }, { status: 500 })
     }
