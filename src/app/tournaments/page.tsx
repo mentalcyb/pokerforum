@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import tournaments, { type Tournament } from '@/data/tournaments'
+import { createClient } from '@/lib/supabase'
 
 const SERIES = ['All', 'EPT', 'WPT', 'WSOP Europe', 'WSOP Circuit', 'RPT', 'Merit', 'APT', 'Local']
 
@@ -187,6 +188,20 @@ export default function TournamentsPage() {
   const [activeSeries, setActiveSeries] = useState('All')
   const [search, setSearch] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
+  const [canSubmit, setCanSubmit] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin, is_moderator')
+        .eq('id', data.user.id)
+        .single()
+      if (profile?.is_admin || profile?.is_moderator) setCanSubmit(true)
+    })
+  }, [])
 
   // Debug: verify data is loaded
   console.log('[tournaments] array length:', Array.isArray(tournaments) ? tournaments.length : 'NOT AN ARRAY', tournaments)
@@ -223,12 +238,14 @@ export default function TournamentsPage() {
               Includes Turkey 🇹🇷, Greece 🇬🇷, Czech Republic 🇨🇿, Austria 🇦🇹, UAE 🇦🇪, Romania 🇷🇴, Bulgaria 🇧🇬, Cyprus 🇨🇾 and local Georgia 🇬🇪 events.
             </p>
           </div>
-          <button
-            onClick={() => setShowSubmit(true)}
-            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            + Submit a tournament
-          </button>
+          {canSubmit && (
+            <button
+              onClick={() => setShowSubmit(true)}
+              className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              + Submit a tournament
+            </button>
+          )}
         </div>
       </div>
 
@@ -282,8 +299,8 @@ export default function TournamentsPage() {
       <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
         <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
           <strong>⚠ Dates and guarantees may change.</strong> Always verify on the official tournament website before booking travel.
-          Know about a tournament we missed?{' '}
-          <button onClick={() => setShowSubmit(true)} className="underline font-semibold">Submit it here</button>.
+          {canSubmit && <>Know about a tournament we missed?{' '}
+          <button onClick={() => setShowSubmit(true)} className="underline font-semibold">Submit it here</button>.</>}
         </p>
       </div>
     </div>
