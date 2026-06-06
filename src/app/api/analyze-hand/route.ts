@@ -163,7 +163,7 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'meta-llama/llama-3.1-8b-instruct:free',
         messages: [{ role: 'user', content: prompt }],
       }),
     })
