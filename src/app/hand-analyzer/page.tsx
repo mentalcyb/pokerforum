@@ -232,12 +232,33 @@ export default function HandAnalyzerPage() {
                 <p className="text-sm text-brand-700 dark:text-brand-400 leading-relaxed">{analysis.discussion}</p>
               </div>
             </div>
-            <a
-              href="/new-post"
+            <button
+              onClick={() => {
+                if (!analysis) return
+                const streetLines = (['preflop', 'flop', 'turn', 'river'] as const)
+                  .map(s => {
+                    const r = analysis[s]
+                    if (!r) return null
+                    const icon = r.status === 'ok' ? '✓' : r.status === 'warning' ? '⚠' : '✗'
+                    return `${s.toUpperCase()} [${icon}]\n${r.assessment}\n${r.note}`
+                  })
+                  .filter(Boolean)
+                  .join('\n\n')
+
+                const body =
+                  `📋 HAND SUMMARY\n${analysis.summary}` +
+                  `\n\n🃏 STREET BREAKDOWN\n${streetLines}` +
+                  (analysis.keyMistake ? `\n\n🎯 KEY SPOT\n${analysis.keyMistake}` : '') +
+                  `\n\n💬 DISCUSSION\n${analysis.discussion}` +
+                  `\n\n---\n📄 HAND HISTORY\n${handHistory}`
+
+                localStorage.setItem('hand-analyzer-prefill', body)
+                window.location.href = '/post/37'
+              }}
               className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors"
             >
               Post this hand to the forum →
-            </a>
+            </button>
           </div>
         </div>
       )}

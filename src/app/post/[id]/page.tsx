@@ -55,6 +55,16 @@ export default function PostPage() {
       }
     })
     loadPost()
+
+    // Pre-fill reply from hand analyzer if available
+    const prefill = localStorage.getItem('hand-analyzer-prefill')
+    if (prefill) {
+      setReplyText(prefill)
+      localStorage.removeItem('hand-analyzer-prefill')
+      setTimeout(() => {
+        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 800)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
