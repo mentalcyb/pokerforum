@@ -15,6 +15,7 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
   const supabase = createClient()
 
   async function loadProfile(uid: string) {
@@ -46,7 +47,10 @@ export default function Navbar() {
 
     // Close menu on outside click
     function handleOutsideClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const clickedInsideMenu = menuRef.current?.contains(target)
+      const clickedToggleBtn = toggleRef.current?.contains(target)
+      if (!clickedInsideMenu && !clickedToggleBtn) {
         setMenuOpen(false)
       }
     }
@@ -152,6 +156,7 @@ export default function Navbar() {
             </Link>
           )}
           <button
+            ref={toggleRef}
             onClick={() => setMenuOpen(v => !v)}
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
             aria-label="Menu"
