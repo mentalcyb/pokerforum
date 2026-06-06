@@ -149,6 +149,10 @@ export const translations = {
     editPostTitle: 'პოსტის რედაქტირება',
     saveChanges: 'შენახვა',
     editSuccess: 'პოსტი განახლდა!',
+    // tools nav
+    tools: 'ხელსაწყოები',
+    handAnalyzer: 'ხელის ანალიზი',
+    oddsCalc: 'ოდს კალკ.',
   },
   en: {
     // branding
@@ -300,6 +304,10 @@ export const translations = {
     editPostTitle: 'Edit Post',
     saveChanges: 'Save changes',
     editSuccess: 'Post updated!',
+    // tools nav
+    tools: 'Tools',
+    handAnalyzer: 'Hand Analyzer',
+    oddsCalc: 'Odds Calc',
   }
 }
 
