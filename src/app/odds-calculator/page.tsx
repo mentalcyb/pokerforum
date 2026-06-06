@@ -409,7 +409,7 @@ export default function OddsCalculatorPage() {
 
       {/* Results */}
       <p className="mt-2 mb-6 text-center text-xs text-gray-400 dark:text-gray-600">
-        Powered by Claude AI · Built with Claude Code
+        Powered by Headsuper
       </p>
 
       {results && (
