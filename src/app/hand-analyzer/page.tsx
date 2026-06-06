@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const SAMPLE_PS = `PokerStars Hand #243000000001: Hold'em No Limit ($0.25/$0.50 USD) - 2024/05/01 20:00:00 ET
 Table 'TableName' 6-max Seat #1 is the button
@@ -50,11 +50,24 @@ const STATUS_STYLES = {
 const STATUS_ICON = { ok: '✓', warning: '⚠', error: '✗' }
 const STATUS_LABEL = { ok: 'Good', warning: 'Questionable', error: 'Mistake' }
 
+const LS_KEY = 'hand-analyzer-lang'
+
 export default function HandAnalyzerPage() {
   const [handHistory, setHandHistory] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
+  const [lang, setLangState] = useState<'en' | 'ka'>('en')
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY)
+    if (saved === 'ka' || saved === 'en') setLangState(saved)
+  }, [])
+
+  function setLang(l: 'en' | 'ka') {
+    setLangState(l)
+    localStorage.setItem(LS_KEY, l)
+  }
 
   async function analyze() {
     if (!handHistory.trim()) { setError('Please paste a hand history first.'); return }
@@ -65,7 +78,7 @@ export default function HandAnalyzerPage() {
       const res = await fetch('/api/analyze-hand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handHistory }),
+        body: JSON.stringify({ handHistory, lang }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Analysis failed.'); return }
@@ -120,21 +133,47 @@ export default function HandAnalyzerPage() {
           className="w-full text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-800 dark:text-gray-200 resize-y focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder-gray-400"
         />
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          onClick={analyze}
-          disabled={loading}
-          className="mt-3 w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-              Analyzing…
-            </span>
-          ) : '🤖 Analyze Hand'}
-        </button>
+
+        {/* Language toggle + Analyze button */}
+        <div className="mt-3 flex gap-2">
+          <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <button
+              onClick={() => setLang('ka')}
+              className={`px-3 py-2.5 text-sm font-medium transition-colors ${
+                lang === 'ka'
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              🇬🇪 Georgian
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              className={`px-3 py-2.5 text-sm font-medium transition-colors ${
+                lang === 'en'
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              🇬🇧 English
+            </button>
+          </div>
+          <button
+            onClick={analyze}
+            disabled={loading}
+            className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                Analyzing…
+              </span>
+            ) : '🤖 Analyze Hand'}
+          </button>
+        </div>
       </div>
 
       {/* Results */}

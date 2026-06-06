@@ -101,10 +101,13 @@ function formatActions(actions: Action[], street: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { handHistory } = await req.json()
+    const { handHistory, lang } = await req.json()
     if (!handHistory?.trim()) {
       return NextResponse.json({ error: 'No hand history provided' }, { status: 400 })
     }
+    const langInstruction = lang === 'ka'
+      ? 'Respond entirely in Georgian language (ქართული).'
+      : ''
 
     const client = new Anthropic()
     const p = parseHandHistory(handHistory)
@@ -122,7 +125,7 @@ export async function POST(req: NextRequest) {
       .map(([player, stack]) => `${player}: $${stack}`)
       .join(', ')
 
-    const prompt = `You are a friendly poker coach analyzing a hand for a community forum. Be insightful but conversational — frame this as a discussion starter, not a GTO lecture.
+    const prompt = `You are a friendly poker coach analyzing a hand for a community forum. Be insightful but conversational — frame this as a discussion starter, not a GTO lecture.${langInstruction ? `\n${langInstruction}` : ''}
 
 HAND DETAILS:
 - Game: ${p.gameType}${p.stakes ? ` (${p.stakes})` : ''}
