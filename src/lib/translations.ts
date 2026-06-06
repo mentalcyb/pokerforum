@@ -149,6 +149,7 @@ export const translations = {
     editPostTitle: 'პოსტის რედაქტირება',
     saveChanges: 'შენახვა',
     editSuccess: 'პოსტი განახლდა!',
+    allSeries: 'ყველა სერია',
     // tools nav
     tools: 'ხელსაწყოები',
     tournamentsNav: 'ტურნირები',
@@ -305,6 +306,7 @@ export const translations = {
     editPostTitle: 'Edit Post',
     saveChanges: 'Save changes',
     editSuccess: 'Post updated!',
+    allSeries: 'All Series',
     // tools nav
     tools: 'Tools',
     tournamentsNav: 'Tournaments',

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import PokerAvatar from '@/components/PokerAvatar'
+import allTournaments from '@/data/tournaments'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
@@ -231,15 +232,36 @@ export default function HomePage() {
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
             </div>
-            {tournaments.length === 0
-              ? <div className="p-5 text-center text-xs text-gray-400">{t.noTournaments}</div>
-              : tournaments.map(tr => (
-                <div key={tr.id} className="px-5 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">{tr.name}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{tr.date} · {tr.buyin}</div>
+            {allTournaments.slice(0, 4).map(tr => {
+              const seriesColors: Record<string, string> = {
+                EPT: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+                WPT: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+                'WSOP Europe': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+                'WSOP Circuit': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+                RPT: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+                Merit: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
+                APT: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+                Local: 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400',
+              }
+              const badge = seriesColors[tr.series] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+              return (
+                <div key={tr.id} className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge}`}>{tr.series}</span>
+                    <span className="text-xs">{tr.flag}</span>
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{tr.name}</div>
+                  <div className="text-xs text-gray-400 mt-0.5 truncate">{tr.location}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-400">{tr.dates}</span>
+                    <span className="text-xs font-semibold text-brand-600">{tr.buyin}</span>
+                  </div>
                 </div>
-              ))
-            }
+              )
+            })}
+            <Link href="/tournaments" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
+              {t.allSeries} →
+            </Link>
           </div>
 
           {/* Online users */}
