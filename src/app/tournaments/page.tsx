@@ -1,9 +1,6 @@
 'use client'
 import { useState } from 'react'
-import tournaments from '@/data/tournaments.json'
-import { createClient } from '@/lib/supabase'
-
-type Tournament = typeof tournaments[0]
+import tournaments, { type Tournament } from '@/data/tournaments'
 
 const SERIES = ['All', 'EPT', 'WPT', 'WSOP Europe', 'WSOP Circuit', 'RPT', 'Merit', 'APT', 'Local']
 
@@ -92,7 +89,6 @@ function SubmitModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
-  const supabase = createClient()
 
   const set = (k: keyof SubmitForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [k]: e.target.value }))
@@ -105,6 +101,9 @@ function SubmitModal({ onClose }: { onClose: () => void }) {
     }
     setLoading(true)
     setError('')
+    // Lazy import — keeps Supabase out of the SSR bundle for this page
+    const { createClient } = await import('@/lib/supabase')
+    const supabase = createClient()
     const { error: err } = await supabase.from('tournament_submissions').insert({
       name: form.name.trim(),
       location: form.location.trim(),
