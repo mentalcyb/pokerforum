@@ -167,12 +167,14 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
         messages: [{ role: 'user', content: prompt }],
       }),
     })
+    const resText = await res.text()
+    console.log('[analyze-hand] OpenRouter status:', res.status)
+    console.log('[analyze-hand] OpenRouter body:', resText)
+
     if (!res.ok) {
-      const errBody = await res.text()
-      console.error('[analyze-hand] OpenRouter error:', errBody)
-      return NextResponse.json({ error: 'AI request failed. Please try again.' }, { status: 502 })
+      return NextResponse.json({ error: `OpenRouter ${res.status}: ${resText}` }, { status: 502 })
     }
-    const json = await res.json()
+    const json = JSON.parse(resText)
     const text: string = json.choices?.[0]?.message?.content ?? ''
 
     // Extract JSON even if wrapped in markdown code fences
