@@ -235,53 +235,60 @@ function CardPicker({
   )
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
+// ── Street label helper ────────────────────────────────────────────────────
 
-const CATEGORY_NAMES: Record<number, string> = {
-  8: 'Straight Flush', 7: 'Four of a Kind', 6: 'Full House',
-  5: 'Flush', 4: 'Straight', 3: 'Three of a Kind',
-  2: 'Two Pair', 1: 'One Pair', 0: 'High Card',
+function streetLabel(boardLen: number): string {
+  if (boardLen === 0) return 'Preflop'
+  if (boardLen === 3) return 'Flop'
+  if (boardLen === 4) return 'Turn'
+  if (boardLen === 5) return 'River'
+  return `Board (${boardLen})`
 }
+
+// ── Main page ──────────────────────────────────────────────────────────────
 
 export default function OddsCalculatorPage() {
   const [game, setGame] = useState<'holdem' | 'omaha'>('holdem')
   const [playerCount, setPlayerCount] = useState(2)
   const [playerHands, setPlayerHands] = useState<Card[][]>([[], [], [], [], [], []])
-  const [board, setBoard] = useState<Card[]>([])
+  // Board split by street
+  const [flop, setFlop] = useState<Card[]>([])
+  const [turn, setTurn] = useState<Card[]>([])
+  const [river, setRiver] = useState<Card[]>([])
   const [results, setResults] = useState<SimResult[] | null>(null)
+  const [resultStreet, setResultStreet] = useState('')
   const [running, setRunning] = useState(false)
 
   const holeCardCount = game === 'holdem' ? 2 : 4
+  const board = [...flop, ...turn, ...river]
 
   const allUsed = useCallback((): Set<string> => {
     const s = new Set<string>()
     playerHands.slice(0, playerCount).forEach(h => h.forEach(c => s.add(cardKey(c))))
     board.forEach(c => s.add(cardKey(c)))
     return s
-  }, [playerHands, board, playerCount])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerHands, flop, turn, river, playerCount])
 
   function setPlayerHand(idx: number, cards: Card[]) {
-    const next = [...playerHands]
-    next[idx] = cards
-    setPlayerHands(next)
-    setResults(null)
-  }
-
-  function setBoard2(cards: Card[]) {
-    setBoard(cards)
-    setResults(null)
+    const next = [...playerHands]; next[idx] = cards
+    setPlayerHands(next); setResults(null)
   }
 
   function changeGame(g: 'holdem' | 'omaha') {
     setGame(g)
     setPlayerHands([[], [], [], [], [], []])
-    setBoard([])
+    setFlop([]); setTurn([]); setRiver([])
+    setResults(null)
+  }
+
+  function resetBoard() {
+    setFlop([]); setTurn([]); setRiver([])
     setResults(null)
   }
 
   function canRun() {
-    const activePlayers = playerHands.slice(0, playerCount)
-    return activePlayers.every(h => h.length === holeCardCount)
+    return playerHands.slice(0, playerCount).every(h => h.length === holeCardCount)
   }
 
   function run() {
@@ -289,8 +296,10 @@ export default function OddsCalculatorPage() {
     setRunning(true)
     setTimeout(() => {
       const players = playerHands.slice(0, playerCount)
-      const res = simulate(game, players, board, 7500)
+      const b = [...flop, ...turn, ...river]
+      const res = simulate(game, players, b, 7500)
       setResults(res)
+      setResultStreet(streetLabel(b.length))
       setRunning(false)
     }, 10)
   }
@@ -300,6 +309,13 @@ export default function OddsCalculatorPage() {
   }
 
   const usedKeys = allUsed()
+
+  // Board card blocker helpers — exclude own cards from blocked set
+  function boardBlocked(own: Card[]): Set<string> {
+    const b = new Set(usedKeys)
+    own.forEach(c => b.delete(cardKey(c)))
+    return b
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -319,15 +335,8 @@ export default function OddsCalculatorPage() {
             <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Game</div>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
               {(['holdem', 'omaha'] as const).map(g => (
-                <button
-                  key={g}
-                  onClick={() => changeGame(g)}
-                  className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-                    game === g
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                  }`}
-                >
+                <button key={g} onClick={() => changeGame(g)}
+                  className={`px-4 py-1.5 text-sm font-medium transition-colors ${game === g ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                   {g === 'holdem' ? "Hold'em" : 'Omaha'}
                 </button>
               ))}
@@ -337,15 +346,8 @@ export default function OddsCalculatorPage() {
             <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Players</div>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
               {[2, 3, 4, 5, 6].map(n => (
-                <button
-                  key={n}
-                  onClick={() => { setPlayerCount(n); setResults(null) }}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    playerCount === n
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                  }`}
-                >
+                <button key={n} onClick={() => { setPlayerCount(n); setResults(null) }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${playerCount === n ? 'bg-brand-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                   {n}
                 </button>
               ))}
@@ -373,19 +375,65 @@ export default function OddsCalculatorPage() {
         })}
       </div>
 
-      {/* Board */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-5">
-        <CardPicker
-          selected={board}
-          onChange={setBoard2}
-          blocked={(() => {
-            const b = new Set(usedKeys)
-            board.forEach(c => b.delete(cardKey(c)))
-            return b
-          })()}
-          maxCards={5}
-          label="Board (0–5 cards)"
-        />
+      {/* Community cards — Flop / Turn / River */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-5">
+        <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Community Cards</h2>
+            {/* Street progress indicator */}
+            <div className="flex items-center gap-1 ml-2">
+              {(['Preflop', 'Flop', 'Turn', 'River'] as const).map((s, idx) => {
+                const active = (idx === 0 && board.length === 0) || (idx === 1 && board.length === 3) || (idx === 2 && board.length === 4) || (idx === 3 && board.length === 5)
+                const done = (idx === 1 && board.length >= 3) || (idx === 2 && board.length >= 4) || (idx === 3 && board.length >= 5)
+                return (
+                  <span key={s} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${active ? 'bg-brand-600 text-white' : done ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                    {s}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+          {board.length > 0 && (
+            <button onClick={resetBoard} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+              Clear board
+            </button>
+          )}
+        </div>
+
+        <div className="divide-y divide-gray-50 dark:divide-gray-800">
+          {/* Flop */}
+          <div className="p-5">
+            <CardPicker
+              selected={flop}
+              onChange={cards => { setFlop(cards); if (cards.length < 3) { setTurn([]); setRiver([]) } setResults(null) }}
+              blocked={boardBlocked(flop)}
+              maxCards={3}
+              label="Flop — 3 cards"
+            />
+          </div>
+
+          {/* Turn — unlocked after flop is complete */}
+          <div className={`p-5 ${flop.length < 3 ? 'opacity-40 pointer-events-none' : ''}`}>
+            <CardPicker
+              selected={turn}
+              onChange={cards => { setTurn(cards); if (cards.length < 1) setRiver([]); setResults(null) }}
+              blocked={boardBlocked(turn)}
+              maxCards={1}
+              label={`Turn — 1 card${flop.length < 3 ? ' (deal flop first)' : ''}`}
+            />
+          </div>
+
+          {/* River — unlocked after turn is complete */}
+          <div className={`p-5 ${turn.length < 1 ? 'opacity-40 pointer-events-none' : ''}`}>
+            <CardPicker
+              selected={river}
+              onChange={cards => { setRiver(cards); setResults(null) }}
+              blocked={boardBlocked(river)}
+              maxCards={1}
+              label={`River — 1 card${turn.length < 1 ? ' (deal turn first)' : ''}`}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Run */}
@@ -404,18 +452,21 @@ export default function OddsCalculatorPage() {
           </span>
         ) : !canRun()
           ? `Select ${holeCardCount} cards for each player to calculate`
-          : '🎲 Calculate Odds'}
+          : `🎲 Calculate ${streetLabel(board.length)} Equity`}
       </button>
 
-      {/* Results */}
       <p className="mt-2 mb-6 text-center text-xs text-gray-400 dark:text-gray-600">
         Powered by Headsuper
       </p>
 
+      {/* Results */}
       {results && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900 dark:text-white">Results</h2>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-600">
+              {resultStreet} Equity
+            </span>
           </div>
           {results.slice(0, playerCount).map((r, i) => {
             const winPct = parseFloat(pct(r.wins, r.total))
@@ -442,12 +493,9 @@ export default function OddsCalculatorPage() {
                     )}
                   </div>
                 </div>
-                {/* Bar */}
                 <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-brand-600 rounded-full transition-all duration-500"
-                    style={{ width: `${winPct + tiePct / 2}%` }}
-                  />
+                  <div className="h-full bg-brand-600 rounded-full transition-all duration-500"
+                    style={{ width: `${winPct + tiePct / 2}%` }} />
                 </div>
               </div>
             )
