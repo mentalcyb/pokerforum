@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
     const { data: profile } = await admin.from('profiles').select('is_admin').eq('id', user.id).single()
     if (!profile?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    // Fetch all profiles with post counts
+    // Fetch all profiles (including last_ip written directly on login)
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, username, is_banned, is_admin, is_moderator, created_at')
+      .select('id, username, is_banned, is_admin, is_moderator, created_at, last_ip')
       .order('created_at', { ascending: false })
 
     // Fetch recent sessions (last 200)
@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
       email: emailMap[p.id] ?? '',
       post_count: countMap[p.id] ?? 0,
       last_login: lastLogin[p.id] ?? null,
-      last_ip: lastIp[p.id] ?? null,
+      // Use profiles.last_ip as primary source; fall back to sessions map
+      // Never expose IP for admin accounts
+      last_ip: p.is_admin ? null : ((p as any).last_ip ?? lastIp[p.id] ?? null),
     }))
 
     return NextResponse.json({ users: enrichedUsers, sessions: sessions ?? [] })

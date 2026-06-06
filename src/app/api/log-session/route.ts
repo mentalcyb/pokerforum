@@ -23,17 +23,24 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') || ''
 
     const admin = createAdminClient()
+
+    // Always write last_ip directly to profiles for login/register — reliable even if user_sessions table doesn't exist
+    if (action === 'login' || action === 'register') {
+      const { error: profileErr } = await admin
+        .from('profiles')
+        .update({ last_ip: ip })
+        .eq('id', user_id)
+      if (profileErr) console.error('[log-session] profiles.last_ip update error:', profileErr.message)
+    }
+
+    // Also insert into user_sessions (best-effort — table may not exist yet)
     const { error } = await admin.from('user_sessions').insert({
       user_id,
       ip_address: ip,
       user_agent: userAgent,
       action,
     })
-
-    if (error) {
-      console.error('[log-session] insert error:', error.message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) console.warn('[log-session] user_sessions insert (non-fatal):', error.message)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

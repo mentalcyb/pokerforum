@@ -582,7 +582,10 @@ export default function AdminPage() {
                             ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
-                            {u.last_ip || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                            {u.is_admin
+                              ? <span className="text-gray-300 dark:text-gray-600" title="Hidden for admins">—</span>
+                              : u.last_ip || <span className="text-gray-300 dark:text-gray-600">—</span>
+                            }
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className="font-semibold text-gray-900 dark:text-white">{u.post_count}</span>
