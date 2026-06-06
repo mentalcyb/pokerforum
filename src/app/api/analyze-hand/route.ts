@@ -109,7 +109,10 @@ export async function POST(req: NextRequest) {
       ? 'Respond entirely in Georgian language (ქართული).'
       : ''
 
-    const client = new Anthropic()
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'AI analysis is not configured. Please set ANTHROPIC_API_KEY.' }, { status: 503 })
+    }
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const p = parseHandHistory(handHistory)
 
     const streets = ['preflop', 'flop', 'turn', 'river']
