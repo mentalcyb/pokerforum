@@ -4,11 +4,19 @@ import { AppProvider } from '@/contexts/AppContext'
 import Navbar from '@/components/Navbar'
 
 export const metadata: Metadata = {
-  title: 'pokerforum.ge',
-  description: 'პირველი ქართული პოკერის ფორუმი',
+  title: 'პოკერის ფორუმი - ქართული პოკერის საზოგადოება | pokerforum.ge',
+  description: 'ქართული პოკერის ფორუმი - განიხილე სტრატეგია, ტურნირები და სიახლეები. საქართველოს უმსხვილესი პოკერის საზოგადოება.',
+  keywords: 'პოკერის ფორუმი, ქართული პოკერი, poker forum georgia, პოკერი საქართველო',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
+  },
+  openGraph: {
+    title: 'პოკერის ფორუმი | pokerforum.ge',
+    description: 'ქართული პოკერის მთავარი ფორუმი',
+    url: 'https://pokerforum.ge',
+    locale: 'ka_GE',
+    type: 'website',
   },
 }
 
