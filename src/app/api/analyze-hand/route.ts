@@ -100,13 +100,16 @@ function formatActions(actions: Action[], street: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('[analyze-hand] OPENROUTER_API_KEY present:', !!process.env.OPENROUTER_API_KEY)
+    console.log('[analyze-hand] OPENROUTER_API_KEY length:', process.env.OPENROUTER_API_KEY?.length ?? 0)
+
     const { handHistory, lang } = await req.json()
     if (!handHistory?.trim()) {
       return NextResponse.json({ error: 'No hand history provided' }, { status: 400 })
     }
 
     if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: 'AI analysis is not configured. Please set OPENROUTER_API_KEY.' }, { status: 503 })
+      return NextResponse.json({ error: 'AI analysis is not configured. OPENROUTER_API_KEY is missing on the server.' }, { status: 503 })
     }
 
     const langInstruction = lang === 'ka'
@@ -156,6 +159,8 @@ Respond with ONLY valid JSON (no markdown, no code blocks) matching this exact s
 
 Status must be "ok", "warning", or "error". Include only streets that appear in the hand. Set missing streets to null.`
 
+    console.log('[analyze-hand] lang:', lang)
+    console.log('[analyze-hand] Authorization header will be: Bearer <key present:', !!process.env.OPENROUTER_API_KEY, '>')
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -170,7 +175,6 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
         ],
       }),
     })
-    console.log('[analyze-hand] lang:', lang)
     const resText = await res.text()
     console.log('[analyze-hand] OpenRouter status:', res.status)
     console.log('[analyze-hand] OpenRouter body:', resText)
