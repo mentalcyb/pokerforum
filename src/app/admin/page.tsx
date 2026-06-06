@@ -11,6 +11,8 @@ const ICON_MAP: Record<string, string> = {
 }
 
 interface UserRow { id: string; username: string; is_admin: boolean; is_moderator: boolean; is_banned: boolean; created_at: string }
+interface SecurityUser { id: string; username: string; email: string; is_banned: boolean; is_admin: boolean; is_moderator: boolean; created_at: string; post_count: number; last_login: string | null; last_ip: string | null }
+interface SessionRow { id: string; user_id: string; ip_address: string; user_agent: string; action: string; created_at: string; profiles: { username: string } | null }
 interface PostRow { id: number; title: string; content: string; created_at: string; profiles: { username: string } | null; categories: { name: string } | null }
 interface CategoryRow { id: number; name: string; description: string; icon: string; post_count: number }
 interface TournamentRow { id: number; name: string; date: string; buyin: string; status: string }
@@ -27,7 +29,11 @@ export default function AdminPage() {
   const [posts, setPosts] = useState<PostRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [tournaments, setTournaments] = useState<TournamentRow[]>([])
-  const [tab, setTab] = useState<'posts' | 'users' | 'categories' | 'tournaments'>('posts')
+  const [tab, setTab] = useState<'posts' | 'users' | 'categories' | 'tournaments' | 'security'>('posts')
+  const [securityUsers, setSecurityUsers] = useState<SecurityUser[]>([])
+  const [sessions, setSessions] = useState<SessionRow[]>([])
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [securityError, setSecurityError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [postEditing, setPostEditing] = useState<PostEditState | null>(null)
   const [catEditing, setCatEditing] = useState<CatEditState | null>(null)
@@ -152,6 +158,31 @@ export default function AdminPage() {
     setNewTournament(null); setSaving(false)
   }
 
+  // --- Security ---
+  async function loadSecurity() {
+    if (securityUsers.length > 0) return // already loaded
+    setSecurityLoading(true)
+    setSecurityError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token ?? ''
+      const res = await fetch('/api/admin/security', { headers: { Authorization: `Bearer ${token}` } })
+      const json = await res.json()
+      if (!res.ok) { setSecurityError(json.error ?? 'Failed to load'); setSecurityLoading(false); return }
+      setSecurityUsers(json.users ?? [])
+      setSessions(json.sessions ?? [])
+    } catch (e) {
+      setSecurityError('Network error')
+    }
+    setSecurityLoading(false)
+  }
+
+  async function banFromSecurity(userId: string, current: boolean) {
+    if (!confirm(current ? t.confirmUnban : t.confirmBan)) return
+    await supabase.from('profiles').update({ is_banned: !current }).eq('id', userId)
+    setSecurityUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
+  }
+
   // --- Users ---
   async function toggleAdmin(userId: string, current: boolean) {
     await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId)
@@ -198,11 +229,16 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setTab('posts')} className={tabClass('posts')}>{t.postsTab} ({posts.length})</button>
         {currentUserIsAdmin && <button onClick={() => setTab('categories')} className={tabClass('categories')}>{t.categoriesTab} ({categories.length})</button>}
         {currentUserIsAdmin && <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>{t.tournamentsTab} ({tournaments.length})</button>}
         <button onClick={() => setTab('users')} className={tabClass('users')}>{t.usersTab} ({users.length})</button>
+        {currentUserIsAdmin && (
+          <button onClick={() => { setTab('security'); loadSecurity() }} className={tabClass('security')}>
+            🔒 Security
+          </button>
+        )}
       </div>
 
       {/* ── POSTS TAB ── */}
@@ -482,6 +518,149 @@ export default function AdminPage() {
               ))
             }
           </div>
+        </div>
+      )}
+
+      {/* ── SECURITY TAB ── */}
+      {tab === 'security' && (
+        <div className="space-y-6">
+          {securityError && (
+            <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+              {securityError}
+              <p className="mt-1 text-xs opacity-75">Make sure SUPABASE_SERVICE_ROLE_KEY is set in Vercel and the user_sessions table exists (run supabase/user_sessions.sql).</p>
+            </div>
+          )}
+          {securityLoading ? (
+            <div className="p-8 text-center text-gray-400">{t.loading}</div>
+          ) : (
+            <>
+              {/* User security table */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                  <span className="text-lg">👥</span>
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Users &amp; Security</h2>
+                  <span className="ml-auto text-xs text-gray-400">{securityUsers.length} users</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400 text-left">
+                        <th className="px-4 py-3 font-medium">User</th>
+                        <th className="px-4 py-3 font-medium">Email</th>
+                        <th className="px-4 py-3 font-medium">Registered</th>
+                        <th className="px-4 py-3 font-medium">Last Login</th>
+                        <th className="px-4 py-3 font-medium">Last IP</th>
+                        <th className="px-4 py-3 font-medium">Posts</th>
+                        <th className="px-4 py-3 font-medium">Status</th>
+                        <th className="px-4 py-3 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {securityUsers.map(u => (
+                        <tr key={u.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center text-brand-700 dark:text-brand-400 text-xs font-bold flex-shrink-0">
+                                {u.username?.[0]?.toUpperCase()}
+                              </div>
+                              <div>
+                                <div className={`font-medium ${u.is_banned ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>{u.username}</div>
+                                {u.is_admin && <span className="text-xs text-amber-600 font-medium">admin</span>}
+                                {u.is_moderator && !u.is_admin && <span className="text-xs text-blue-600 font-medium">mod</span>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{u.email || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
+                            {new Date(u.created_at).toLocaleDateString()}<br/>
+                            <span className="text-gray-400">{new Date(u.created_at).toLocaleTimeString()}</span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
+                            {u.last_login ? (
+                              <>{new Date(u.last_login).toLocaleDateString()}<br/>
+                              <span className="text-gray-400">{new Date(u.last_login).toLocaleTimeString()}</span></>
+                            ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+                            {u.last_ip || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="font-semibold text-gray-900 dark:text-white">{u.post_count}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {u.is_banned
+                              ? <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium">Banned</span>
+                              : <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 font-medium">Active</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => banFromSecurity(u.id, u.is_banned)}
+                              className={`px-2.5 py-1 text-xs border rounded-lg transition-colors whitespace-nowrap ${
+                                u.is_banned
+                                  ? 'border-green-200 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                  : 'border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                              }`}
+                            >
+                              {u.is_banned ? '✅ Unban' : '🚫 Ban'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Session log */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                  <span className="text-lg">🕵️</span>
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Recent Activity Log</h2>
+                  <span className="ml-auto text-xs text-gray-400">Last {sessions.length} events</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 text-left">
+                        <th className="px-4 py-2.5 font-medium">Time</th>
+                        <th className="px-4 py-2.5 font-medium">User</th>
+                        <th className="px-4 py-2.5 font-medium">Action</th>
+                        <th className="px-4 py-2.5 font-medium">IP Address</th>
+                        <th className="px-4 py-2.5 font-medium">User Agent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessions.map(s => (
+                        <tr key={s.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">
+                            {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString()}
+                          </td>
+                          <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
+                            {(s.profiles as any)?.username ?? s.user_id.slice(0, 8)}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full font-semibold ${
+                              s.action === 'login' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                              s.action === 'register' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                              'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                            }`}>
+                              {s.action}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-gray-500 dark:text-gray-400">{s.ip_address}</td>
+                          <td className="px-4 py-2.5 text-gray-400 max-w-xs truncate" title={s.user_agent}>{s.user_agent}</td>
+                        </tr>
+                      ))}
+                      {sessions.length === 0 && (
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No sessions logged yet.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

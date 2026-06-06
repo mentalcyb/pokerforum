@@ -72,6 +72,7 @@ function AuthForm() {
       if (err) { setError(t.registerError); setLoading(false); return }
       if (data.user) {
         await supabase.from('profiles').insert({ id: data.user.id, username })
+        fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: data.user.id, action: 'register' }) }).catch(() => {})
       }
       setSuccess(t.confirmEmail)
     } else {
@@ -87,6 +88,7 @@ function AuthForm() {
           setLoading(false)
           return
         }
+        fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: loggedIn.id, action: 'login' }) }).catch(() => {})
       }
       router.push('/')
     }
