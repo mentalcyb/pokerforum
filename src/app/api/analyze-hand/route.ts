@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 type Action = { street: string; player: string; action: string; amount?: string }
 
@@ -106,8 +105,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No hand history provided' }, { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'AI analysis is not configured. Please set GEMINI_API_KEY.' }, { status: 503 })
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'AI analysis is not configured. Please set OPENROUTER_API_KEY.' }, { status: 503 })
     }
 
     const langInstruction = lang === 'ka'
@@ -157,10 +156,24 @@ Respond with ONLY valid JSON (no markdown, no code blocks) matching this exact s
 
 Status must be "ok", "warning", or "error". Include only streets that appear in the hand. Set missing streets to null.`
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    if (!res.ok) {
+      const errBody = await res.text()
+      console.error('[analyze-hand] OpenRouter error:', errBody)
+      return NextResponse.json({ error: 'AI request failed. Please try again.' }, { status: 502 })
+    }
+    const json = await res.json()
+    const text: string = json.choices?.[0]?.message?.content ?? ''
 
     // Extract JSON even if wrapped in markdown code fences
     const jsonMatch = text.match(/\{[\s\S]*\}/)
