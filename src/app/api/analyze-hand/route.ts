@@ -158,7 +158,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks) matching this exact s
 Status must be "ok", "warning", or "error". Include only streets that appear in the hand. Set missing streets to null.`
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
     const result = await model.generateContent(prompt)
     const text = result.response.text()
 
