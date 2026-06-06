@@ -151,6 +151,7 @@ export const translations = {
     editSuccess: 'პოსტი განახლდა!',
     // tools nav
     tools: 'ხელსაწყოები',
+    tournamentsNav: 'ტურნირები',
     handAnalyzer: 'ხელის ანალიზი',
     oddsCalc: 'ოდს კალკ.',
   },
@@ -306,6 +307,7 @@ export const translations = {
     editSuccess: 'Post updated!',
     // tools nav
     tools: 'Tools',
+    tournamentsNav: 'Tournaments',
     handAnalyzer: 'Hand Analyzer',
     oddsCalc: 'Odds Calc',
   }
