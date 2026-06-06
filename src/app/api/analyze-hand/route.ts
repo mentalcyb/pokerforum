@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     }
 
     const langInstruction = lang === 'ka'
-      ? 'Respond entirely in Georgian language (ქართული).'
+      ? 'You MUST respond entirely in Georgian language (ქართული ენა). Every single word of your response must be in Georgian. Do not use English.'
       : ''
 
     const p = parseHandHistory(handHistory)
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       .map(([player, stack]) => `${player}: $${stack}`)
       .join(', ')
 
-    const prompt = `You are a friendly poker coach analyzing a hand for a community forum. Be insightful but conversational — frame this as a discussion starter, not a GTO lecture.${langInstruction ? `\n${langInstruction}` : ''}
+    const prompt = `${langInstruction ? langInstruction + '\n\n' : ''}You are a friendly poker coach analyzing a hand for a community forum. Be insightful but conversational — frame this as a discussion starter, not a GTO lecture.
 
 HAND DETAILS:
 - Game: ${p.gameType}${p.stakes ? ` (${p.stakes})` : ''}
@@ -164,9 +164,13 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
       },
       body: JSON.stringify({
         model: 'google/gemma-4-31b-it:free',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          ...(langInstruction ? [{ role: 'system', content: langInstruction }] : []),
+          { role: 'user', content: prompt },
+        ],
       }),
     })
+    console.log('[analyze-hand] lang:', lang)
     const resText = await res.text()
     console.log('[analyze-hand] OpenRouter status:', res.status)
     console.log('[analyze-hand] OpenRouter body:', resText)
