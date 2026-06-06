@@ -3,6 +3,14 @@ import Anthropic from '@anthropic-ai/sdk'
 
 type Action = { street: string; player: string; action: string; amount?: string }
 
+function matchAllBrackets(line: string): string[] {
+  const re = /\[(.+?)\]/g
+  const results: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(line)) !== null) results.push(m[1])
+  return results
+}
+
 function parseHandHistory(text: string) {
   const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean)
 
@@ -42,14 +50,14 @@ function parseHandHistory(text: string) {
     }
     if (line.includes('*** TURN ***')) {
       currentStreet = 'turn'
-      const all = [...line.matchAll(/\[(.+?)\]/g)]
-      if (all.length >= 2) board = [...all[0][1].split(' '), all[1][1]]
+      const all = matchAllBrackets(line)
+      if (all.length >= 2) board = [...all[0].split(' '), all[1]]
       continue
     }
     if (line.includes('*** RIVER ***')) {
       currentStreet = 'river'
-      const all = [...line.matchAll(/\[(.+?)\]/g)]
-      if (all.length >= 2) board = [...all[0][1].split(' '), all[1][1]]
+      const all = matchAllBrackets(line)
+      if (all.length >= 2) board = [...all[0].split(' '), all[1]]
       continue
     }
 
