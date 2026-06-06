@@ -168,7 +168,7 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
+        model: 'google/gemma-2-9b-it:free',
         messages: [
           ...(langInstruction ? [{ role: 'system', content: langInstruction }] : []),
           { role: 'user', content: prompt },
