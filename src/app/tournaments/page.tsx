@@ -188,13 +188,20 @@ export default function TournamentsPage() {
   const [search, setSearch] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
 
-  const filtered = tournaments.filter(t => {
+  // Debug: verify data is loaded
+  console.log('[tournaments] array length:', Array.isArray(tournaments) ? tournaments.length : 'NOT AN ARRAY', tournaments)
+
+  const list: Tournament[] = Array.isArray(tournaments) ? tournaments : []
+
+  const filtered = list.filter(t => {
     const matchSeries = activeSeries === 'All' || t.series === activeSeries
     const matchSearch = search === '' ||
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.location.toLowerCase().includes(search.toLowerCase())
     return matchSeries && matchSearch
   })
+
+  console.log('[tournaments] filtered length:', filtered.length, '| activeSeries:', activeSeries, '| search:', search)
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -252,7 +259,12 @@ export default function TournamentsPage() {
       </div>
 
       {/* Count */}
-      <p className="text-xs text-gray-400 mb-4">{filtered.length} tournament{filtered.length !== 1 ? 's' : ''}</p>
+      <p className="text-xs text-gray-400 mb-4">
+        {filtered.length} tournament{filtered.length !== 1 ? 's' : ''}
+        {process.env.NODE_ENV !== 'production' && (
+          <span className="ml-2 text-red-400">(total in data: {list.length})</span>
+        )}
+      </p>
 
       {/* Grid */}
       {filtered.length === 0 ? (
