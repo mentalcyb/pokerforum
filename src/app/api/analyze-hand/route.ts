@@ -163,7 +163,7 @@ Status must be "ok", "warning", or "error". Include only streets that appear in 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek/deepseek-r1:free',
+        model: 'google/gemma-4-31b-it:free',
         messages: [{ role: 'user', content: prompt }],
       }),
     })
