@@ -1,11 +1,11 @@
 'use client'
 import { useState } from 'react'
 import tournaments from '@/data/tournaments.json'
+import { createClient } from '@/lib/supabase'
 
 type Tournament = typeof tournaments[0]
 
 const SERIES = ['All', 'EPT', 'WPT', 'WSOP Europe', 'WSOP Circuit', 'RPT', 'Merit', 'APT', 'Local']
-const ADMIN_EMAIL = 'admin@pokerforum.ge'
 
 function seriesColor(series: string) {
   const map: Record<string, string> = {
@@ -79,9 +79,115 @@ function TournamentCard({ t }: { t: Tournament }) {
   )
 }
 
+// ── Submit modal ──────────────────────────────────────────────────────────────
+
+type SubmitForm = {
+  name: string; location: string; dates: string
+  buyin: string; guarantee: string; website: string; submitted_by: string
+}
+const EMPTY_FORM: SubmitForm = { name: '', location: '', dates: '', buyin: '', guarantee: '', website: '', submitted_by: '' }
+
+function SubmitModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState<SubmitForm>(EMPTY_FORM)
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
+  const supabase = createClient()
+
+  const set = (k: keyof SubmitForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }))
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim() || !form.location.trim() || !form.dates.trim()) {
+      setError('Please fill in name, location and dates.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    const { error: err } = await supabase.from('tournament_submissions').insert({
+      name: form.name.trim(),
+      location: form.location.trim(),
+      dates: form.dates.trim(),
+      buyin: form.buyin.trim(),
+      guarantee: form.guarantee.trim(),
+      website: form.website.trim(),
+      submitted_by: form.submitted_by.trim(),
+      status: 'pending',
+    })
+    setLoading(false)
+    if (err) { setError(err.message); return }
+    setDone(true)
+  }
+
+  const inputClass = 'w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="font-bold text-gray-900 dark:text-white">Submit a Tournament</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">✕</button>
+        </div>
+
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-3">✅</div>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-1">Thanks for the submission!</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">We'll review it and add it to the page soon.</p>
+            <button onClick={onClose} className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors">Close</button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="px-6 py-5 space-y-3">
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tournament Name *</label>
+              <input value={form.name} onChange={set('name')} placeholder="e.g. EPT Barcelona" className={inputClass} required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Location *</label>
+              <input value={form.location} onChange={set('location')} placeholder="e.g. Barcelona, Spain" className={inputClass} required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Dates *</label>
+              <input value={form.dates} onChange={set('dates')} placeholder="e.g. Aug 10–20, 2026" className={inputClass} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Buy-in</label>
+                <input value={form.buyin} onChange={set('buyin')} placeholder="e.g. €5,300" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Guarantee</label>
+                <input value={form.guarantee} onChange={set('guarantee')} placeholder="e.g. €5,000,000" className={inputClass} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Website</label>
+              <input value={form.website} onChange={set('website')} placeholder="https://..." type="url" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Your name / email (optional)</label>
+              <input value={form.submitted_by} onChange={set('submitted_by')} placeholder="optional" className={inputClass} />
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors mt-1">
+              {loading ? 'Submitting…' : 'Submit Tournament'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function TournamentsPage() {
   const [activeSeries, setActiveSeries] = useState('All')
   const [search, setSearch] = useState('')
+  const [showSubmit, setShowSubmit] = useState(false)
 
   const filtered = tournaments.filter(t => {
     const matchSeries = activeSeries === 'All' || t.series === activeSeries
@@ -91,13 +197,10 @@ export default function TournamentsPage() {
     return matchSeries && matchSearch
   })
 
-  const submitSubject = encodeURIComponent('Tournament Submission – pokerforum.ge')
-  const submitBody = encodeURIComponent(
-    'Tournament Name:\nLocation:\nDates:\nBuy-in:\nGuarantee:\nWebsite:\nNotes:\n'
-  )
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+      {showSubmit && <SubmitModal onClose={() => setShowSubmit(false)} />}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -105,7 +208,7 @@ export default function TournamentsPage() {
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl">🏆</div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Upcoming Tournaments</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Offline Poker Series</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Near Georgia · Within 2–4 hours flight</p>
               </div>
             </div>
@@ -114,12 +217,12 @@ export default function TournamentsPage() {
               Includes Turkey 🇹🇷, Greece 🇬🇷, Czech Republic 🇨🇿, Austria 🇦🇹, UAE 🇦🇪, Romania 🇷🇴, Bulgaria 🇧🇬, Cyprus 🇨🇾 and local Georgia 🇬🇪 events.
             </p>
           </div>
-          <a
-            href={`mailto:${ADMIN_EMAIL}?subject=${submitSubject}&body=${submitBody}`}
+          <button
+            onClick={() => setShowSubmit(true)}
             className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
           >
             + Submit a tournament
-          </a>
+          </button>
         </div>
       </div>
 
@@ -169,9 +272,7 @@ export default function TournamentsPage() {
         <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
           <strong>⚠ Dates and guarantees may change.</strong> Always verify on the official tournament website before booking travel.
           Know about a tournament we missed?{' '}
-          <a href={`mailto:${ADMIN_EMAIL}?subject=${submitSubject}&body=${submitBody}`} className="underline font-semibold">
-            Submit it here
-          </a>.
+          <button onClick={() => setShowSubmit(true)} className="underline font-semibold">Submit it here</button>.
         </p>
       </div>
     </div>

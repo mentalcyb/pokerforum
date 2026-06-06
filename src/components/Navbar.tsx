@@ -93,10 +93,7 @@ export default function Navbar() {
             {dark ? '☀️' : '🌙'}
           </button>
 
-          <Link href="/tournaments" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
-              🏆 {t.tournamentsNav}
-            </Link>
-            <Link href="/hand-analyzer" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
+          <Link href="/hand-analyzer" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
               🤖 {t.handAnalyzer}
             </Link>
             <Link href="/odds-calculator" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
