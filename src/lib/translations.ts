@@ -2,7 +2,7 @@ export const translations = {
   ka: {
     // branding
     siteName: 'pokerforum.ge',
-    tagline: 'პირველი ქართული პოკერის ფორუმი',
+    tagline: 'ქართული პოკერის ფორუმი',
     // nav
     home: 'მთავარი',
     strategy: 'სტრატეგია',
@@ -159,7 +159,7 @@ export const translations = {
   en: {
     // branding
     siteName: 'pokerforum.ge',
-    tagline: 'პირველი ქართული პოკერის ფორუმი',
+    tagline: 'ქართული პოკერის ფორუმი',
     // nav
     home: 'Home',
     strategy: 'Strategy',
