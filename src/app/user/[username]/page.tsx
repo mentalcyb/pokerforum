@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
+import ErrorState from '@/components/ErrorState'
 
 interface Profile {
   id: string
@@ -31,6 +32,7 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [msgText, setMsgText] = useState('')
   const [msgSending, setMsgSending] = useState(false)
   const [msgSent, setMsgSent] = useState(false)
@@ -38,30 +40,41 @@ export default function UserProfilePage() {
   const [showMsgForm, setShowMsgForm] = useState(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    async function load() {
+  async function load() {
+    setLoading(true)
+    setPageError(null)
+    try {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id ?? null)
 
-      const { data: prof } = await supabase
+      const { data: prof, error: profErr } = await supabase
         .from('profiles')
         .select('id, username, avatar, signature, is_admin, created_at')
         .eq('username', username)
         .single()
 
+      if (profErr && profErr.code !== 'PGRST116') throw profErr
       if (!prof) { setLoading(false); return }
       setProfile(prof as Profile)
 
-      const { data: ps } = await supabase
+      const { data: ps, error: psErr } = await supabase
         .from('posts')
         .select('id, title, created_at, reply_count, view_count, categories(name)')
         .eq('user_id', prof.id)
         .order('created_at', { ascending: false })
         .limit(20)
+      if (psErr) throw psErr
 
       setPosts((ps as unknown as Post[]) ?? [])
+    } catch (e) {
+      console.error('[user profile] failed to load:', e)
+      setPageError(t.loadError)
+    } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username])
@@ -91,6 +104,11 @@ export default function UserProfilePage() {
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={load} />
+    </div>
+  )
   if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
 
   const joinDate = new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })

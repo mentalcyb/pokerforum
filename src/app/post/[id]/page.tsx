@@ -8,6 +8,7 @@ import ContentRenderer from '@/components/ContentRenderer'
 import ImageUploader from '@/components/ImageUploader'
 import PokerAvatar from '@/components/PokerAvatar'
 import EmojiPicker from '@/components/EmojiPicker'
+import ErrorState from '@/components/ErrorState'
 
 type Post = {
   id: number; title: string; content: string; created_at: string
@@ -53,7 +54,7 @@ export default function PostPage() {
           setIsBanned(prof.is_banned || false)
         }
       }
-    })
+    }).catch(e => console.warn('[PostPage] auth check failed:', e))
     loadPost()
 
     // Pre-fill reply from hand analyzer if available
@@ -72,45 +73,46 @@ export default function PostPage() {
     setPageLoading(true)
     setPageError(null)
 
-    const { data: p, error: pErr } = await supabase.from('posts')
-      .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature, is_moderator), categories(name)')
-      .eq('id', params.id).single()
-
-    if (pErr) {
-      console.error('[PostPage] post fetch error:', pErr.message, pErr.code)
-      // Retry without signature in case the column doesn't exist yet
-      const { data: p2, error: p2Err } = await supabase.from('posts')
-        .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, is_moderator), categories(name)')
+    try {
+      const { data: p, error: pErr } = await supabase.from('posts')
+        .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature, is_moderator), categories(name)')
         .eq('id', params.id).single()
-      if (p2Err) {
-        setPageError(p2Err.message)
-        setPageLoading(false)
-        return
+
+      let current: any = p
+      if (pErr) {
+        console.error('[PostPage] post fetch error:', pErr.message, pErr.code)
+        // Retry without signature in case the column doesn't exist yet
+        const { data: p2, error: p2Err } = await supabase.from('posts')
+          .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, is_moderator), categories(name)')
+          .eq('id', params.id).single()
+        if (p2Err) throw p2Err
+        current = p2
       }
-      setPost(p2 as any)
-    } else {
-      setPost(p as any)
-    }
+      setPost(current as any)
 
-    const { data: r, error: rErr } = await supabase.from('replies')
-      .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
-      .eq('post_id', params.id).order('created_at')
-
-    if (rErr) {
-      // Retry without signature
-      const { data: r2 } = await supabase.from('replies')
-        .select('id, content, created_at, user_id, profiles(username, avatar, is_moderator)')
+      const { data: r, error: rErr } = await supabase.from('replies')
+        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
         .eq('post_id', params.id).order('created_at')
-      setReplies((r2 as any) || [])
-    } else {
-      setReplies((r as any) || [])
-    }
 
-    const current = p || null
-    if (current) {
-      await supabase.from('posts').update({ view_count: (current as any).view_count + 1 }).eq('id', params.id)
+      if (rErr) {
+        // Retry without signature
+        const { data: r2 } = await supabase.from('replies')
+          .select('id, content, created_at, user_id, profiles(username, avatar, is_moderator)')
+          .eq('post_id', params.id).order('created_at')
+        setReplies((r2 as any) || [])
+      } else {
+        setReplies((r as any) || [])
+      }
+
+      if (current) {
+        await supabase.from('posts').update({ view_count: current.view_count + 1 }).eq('id', params.id)
+      }
+    } catch (e) {
+      console.error('[PostPage] failed to load post:', e)
+      setPageError(t.loadError)
+    } finally {
+      setPageLoading(false)
     }
-    setPageLoading(false)
   }
 
   function startEditing() {
@@ -191,7 +193,11 @@ export default function PostPage() {
   }
 
   if (pageLoading) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
-  if (pageError) return <div className="flex items-center justify-center min-h-screen text-red-400">Error: {pageError}</div>
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={loadPost} />
+    </div>
+  )
   if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
 
   const isAuthor = user && user.id === post.user_id

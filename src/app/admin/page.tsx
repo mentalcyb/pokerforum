@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
+import ErrorState from '@/components/ErrorState'
 
 const ICON_OPTIONS = ['spade', 'trophy', 'money', 'dice', 'book', 'brain']
 const ICON_MAP: Record<string, string> = {
@@ -42,6 +43,7 @@ export default function AdminPage() {
   const [newTournament, setNewTournament] = useState<NewTournamentState | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
   const supabase = createClient()
 
@@ -51,23 +53,36 @@ export default function AdminPage() {
   }, [])
 
   async function checkAdmin() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/'); return }
-    const { data: profile } = await supabase
-      .from('profiles').select('is_admin, is_moderator').eq('id', user.id).single()
-    if (!profile?.is_admin && !profile?.is_moderator) { router.push('/'); return }
-    setCurrentUserIsAdmin(profile?.is_admin || false)
-    if (!profile?.is_admin && profile?.is_moderator) setTab('posts')
-    await loadData()
+    setLoading(true)
+    setPageError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/'); return }
+      const { data: profile, error: profErr } = await supabase
+        .from('profiles').select('is_admin, is_moderator').eq('id', user.id).single()
+      if (profErr) throw profErr
+      if (!profile?.is_admin && !profile?.is_moderator) { router.push('/'); return }
+      setCurrentUserIsAdmin(profile?.is_admin || false)
+      if (!profile?.is_admin && profile?.is_moderator) setTab('posts')
+      await loadData()
+    } catch (e) {
+      console.error('[admin] failed to load:', e)
+      setPageError(t.loadError)
+      setLoading(false)
+    }
   }
 
   async function loadData() {
-    const [{ data: p }, { data: u }, { data: c }, { data: tr }] = await Promise.all([
+    const [{ data: p, error: pErr }, { data: u, error: uErr }, { data: c, error: cErr }, { data: tr, error: trErr }] = await Promise.all([
       supabase.from('posts').select('id, title, content, created_at, profiles(username), categories(name)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, username, is_admin, is_moderator, is_banned, created_at').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('id'),
       supabase.from('tournaments').select('*').order('created_at'),
     ])
+    if (pErr) throw pErr
+    if (uErr) throw uErr
+    if (cErr) throw cErr
+    if (trErr) throw trErr
     setPosts((p as unknown as PostRow[]) ?? [])
     setUsers((u as unknown as UserRow[]) ?? [])
     setCategories((c as unknown as CategoryRow[]) ?? [])
@@ -210,6 +225,12 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  )
+
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={checkAdmin} />
+    </div>
   )
 
   const tabClass = (name: typeof tab) =>

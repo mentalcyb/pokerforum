@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
+import ErrorState from '@/components/ErrorState'
 
 export default function EditPostPage() {
   const { t } = useApp()
@@ -12,17 +13,31 @@ export default function EditPostPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    async function load() {
+  async function load() {
+    setInitializing(true)
+    setPageError(null)
+    try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+      const { data: profile, error: profErr } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+      if (profErr) throw profErr
       if (!profile?.is_admin) { router.push('/'); return }
-      const { data: post } = await supabase.from('posts').select('title, content').eq('id', params.id).single()
+      const { data: post, error: postErr } = await supabase.from('posts').select('title, content').eq('id', params.id).single()
+      if (postErr) throw postErr
       if (post) { setTitle(post.title); setContent(post.content) }
+    } catch (e) {
+      console.error('[edit post] failed to load:', e)
+      setPageError(t.loadError)
+    } finally {
+      setInitializing(false)
     }
+  }
+
+  useEffect(() => {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -34,6 +49,16 @@ export default function EditPostPage() {
     router.push(`/post/${params.id}`)
     setLoading(false)
   }
+
+  if (initializing) return (
+    <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  )
+
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={load} />
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">

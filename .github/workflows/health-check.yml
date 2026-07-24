@@ -1,0 +1,28 @@
+name: Supabase Health Check
+
+on:
+  schedule:
+    # Runs daily. Also acts as a keep-alive ping so Supabase's free-tier
+    # inactivity auto-pause (triggers after ~7 days with no API activity)
+    # never has a chance to kick in.
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /api/health
+        run: |
+          url="https://pokerforum.ge/api/health"
+          echo "Pinging $url"
+          for attempt in 1 2 3; do
+            if response=$(curl -fsS -m 20 "$url"); then
+              echo "OK (attempt $attempt): $response"
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying in 30s..."
+            sleep 30
+          done
+          echo "Health check failed after 3 attempts — site or Supabase may be down/paused."
+          exit 1

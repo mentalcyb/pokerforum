@@ -19,24 +19,28 @@ export default function Navbar() {
   const supabase = createClient()
 
   async function loadProfile(uid: string) {
-    const { data: p } = await supabase
-      .from('profiles').select('is_admin, is_moderator, avatar').eq('id', uid).single()
-    if (p) {
-      setIsAdmin(p.is_admin || false)
-      setIsMod(p.is_moderator || false)
-      setAvatar(p.avatar || 'spade')
+    try {
+      const { data: p } = await supabase
+        .from('profiles').select('is_admin, is_moderator, avatar').eq('id', uid).single()
+      if (p) {
+        setIsAdmin(p.is_admin || false)
+        setIsMod(p.is_moderator || false)
+        setAvatar(p.avatar || 'spade')
+      }
+      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(() => {})
+      supabase.from('messages').select('id', { count: 'exact', head: true })
+        .eq('receiver_id', uid).eq('read', false)
+        .then(({ count }) => setUnreadCount(count ?? 0))
+    } catch (e) {
+      console.warn('[Navbar] failed to load profile:', e)
     }
-    supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(() => {})
-    supabase.from('messages').select('id', { count: 'exact', head: true })
-      .eq('receiver_id', uid).eq('read', false)
-      .then(({ count }) => setUnreadCount(count ?? 0))
   }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
       if (data.user) loadProfile(data.user.id)
-    })
+    }).catch(e => console.warn('[Navbar] auth check failed:', e))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)

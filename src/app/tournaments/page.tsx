@@ -200,7 +200,7 @@ export default function TournamentsPage() {
         .eq('id', data.user.id)
         .single()
       if (profile?.is_admin || profile?.is_moderator) setCanSubmit(true)
-    })
+    }).catch(e => console.warn('[tournaments] admin check failed:', e))
   }, [])
 
   // Debug: verify data is loaded

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
+import ErrorState from '@/components/ErrorState'
 
 interface Message {
   id: number
@@ -36,21 +37,31 @@ export default function InboxPage() {
   const [replyText, setReplyText] = useState('')
   const [replySending, setReplySending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    async function load() {
+  async function load() {
+    setLoading(true)
+    setPageError(null)
+    try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth'); return }
       setUserId(user.id)
       await loadMessages(user.id)
+    } catch (e) {
+      console.error('[inbox] failed to load:', e)
+      setPageError(t.loadError)
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function loadMessages(uid: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select(`
         id, content, read, created_at, sender_id, receiver_id,
@@ -60,6 +71,7 @@ export default function InboxPage() {
       .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
       .order('created_at', { ascending: true })
 
+    if (error) throw error
     if (!data) { setLoading(false); return }
 
     // Build conversation map keyed by the other user's ID
@@ -146,6 +158,12 @@ export default function InboxPage() {
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={load} />
+    </div>
+  )
 
   const totalUnread = conversations.reduce((s, c) => s + c.unread, 0)
 

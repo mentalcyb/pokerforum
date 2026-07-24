@@ -67,32 +67,37 @@ function AuthForm() {
 
     setLoading(true)
 
-    if (mode === 'register') {
-      const { data, error: err } = await supabase.auth.signUp({ email, password, options: { data: { username } } })
-      if (err) { setError(t.registerError); setLoading(false); return }
-      if (data.user) {
-        await supabase.from('profiles').insert({ id: data.user.id, username })
-        fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: data.user.id, action: 'register' }) }).catch(() => {})
-      }
-      setSuccess(t.confirmEmail)
-    } else {
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password })
-      if (err) { setError(t.loginError); setLoading(false); return }
-      // Check if banned
-      const { data: { user: loggedIn } } = await supabase.auth.getUser()
-      if (loggedIn) {
-        const { data: prof } = await supabase.from('profiles').select('is_banned').eq('id', loggedIn.id).single()
-        if (prof?.is_banned) {
-          await supabase.auth.signOut()
-          setError(t.bannedMessage)
-          setLoading(false)
-          return
+    try {
+      if (mode === 'register') {
+        const { data, error: err } = await supabase.auth.signUp({ email, password, options: { data: { username } } })
+        if (err) { setError(t.registerError); return }
+        if (data.user) {
+          await supabase.from('profiles').insert({ id: data.user.id, username })
+          fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: data.user.id, action: 'register' }) }).catch(() => {})
         }
-        fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: loggedIn.id, action: 'login' }) }).catch(() => {})
+        setSuccess(t.confirmEmail)
+      } else {
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+        if (err) { setError(t.loginError); return }
+        // Check if banned
+        const { data: { user: loggedIn } } = await supabase.auth.getUser()
+        if (loggedIn) {
+          const { data: prof } = await supabase.from('profiles').select('is_banned').eq('id', loggedIn.id).single()
+          if (prof?.is_banned) {
+            await supabase.auth.signOut()
+            setError(t.bannedMessage)
+            return
+          }
+          fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: loggedIn.id, action: 'login' }) }).catch(() => {})
+        }
+        router.push('/')
       }
-      router.push('/')
+    } catch (e) {
+      console.error('[auth] request failed:', e)
+      setError(t.loadError)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import PokerAvatar from '@/components/PokerAvatar'
+import ErrorState from '@/components/ErrorState'
 import allTournaments from '@/data/tournaments'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(new Date())
   const supabase = createClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -32,12 +34,16 @@ export default function HomePage() {
   useEffect(() => {
     async function init() {
       // Update last_seen BEFORE loading stats so current user appears online
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { error: lsErr } = await supabase.from('profiles')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', user.id)
-        if (lsErr) console.warn('[last_seen] update failed:', lsErr.message, lsErr.code)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { error: lsErr } = await supabase.from('profiles')
+            .update({ last_seen: new Date().toISOString() })
+            .eq('id', user.id)
+          if (lsErr) console.warn('[last_seen] update failed:', lsErr.message, lsErr.code)
+        }
+      } catch (e) {
+        console.warn('[auth] getUser/last_seen failed:', e)
       }
       await load()
     }
@@ -55,43 +61,58 @@ export default function HomePage() {
   }, [])
 
   async function loadStats() {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    const [{ count: memberCount }, { count: postCount }, { data: onlineData, error: onlineErr }] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('posts').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles')
-        .select('id, username, avatar, is_admin')
-        .gte('last_seen', fiveMinutesAgo)
-        .order('username'),
-    ])
-    if (onlineErr) console.warn('[online users] query error:', onlineErr.message, onlineErr.code)
-    const online = (onlineData as unknown as OnlineUser[]) ?? []
-    setOnlineUsers(online)
-    setStats({
-      members: memberCount ?? 0,
-      posts: postCount ?? 0,
-      online: online.length,
-    })
+    try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      const [{ count: memberCount }, { count: postCount }, { data: onlineData, error: onlineErr }] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('posts').select('*', { count: 'exact', head: true }),
+        supabase.from('profiles')
+          .select('id, username, avatar, is_admin')
+          .gte('last_seen', fiveMinutesAgo)
+          .order('username'),
+      ])
+      if (onlineErr) console.warn('[online users] query error:', onlineErr.message, onlineErr.code)
+      const online = (onlineData as unknown as OnlineUser[]) ?? []
+      setOnlineUsers(online)
+      setStats({
+        members: memberCount ?? 0,
+        posts: postCount ?? 0,
+        online: online.length,
+      })
+    } catch (e) {
+      console.warn('[stats] failed to load:', e)
+    }
   }
 
   async function load() {
-    // Try sort_order first; if column doesn't exist yet fall back to id
-    let { data: cats, error: catErr } = await supabase
-      .from('categories').select('*').order('sort_order', { ascending: true }).order('id')
-    if (catErr) {
-      const { data: catsFallback } = await supabase.from('categories').select('*').order('id')
-      cats = catsFallback
-    }
+    setError(null)
+    try {
+      // Try sort_order first; if column doesn't exist yet fall back to id
+      let { data: cats, error: catErr } = await supabase
+        .from('categories').select('*').order('sort_order', { ascending: true }).order('id')
+      if (catErr) {
+        const { data: catsFallback, error: fallbackErr } = await supabase.from('categories').select('*').order('id')
+        if (fallbackErr) throw fallbackErr
+        cats = catsFallback
+      }
 
-    const [{ data: ps }, { data: ts }] = await Promise.all([
-      supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
-      supabase.from('tournaments').select('*').order('created_at'),
-    ])
-    setCategories(cats || [])
-    setPosts((ps as any) || [])
-    setTournaments(ts || [])
-    await loadStats()
-    setLoading(false)
+      const [{ data: ps, error: psErr }, { data: ts, error: tsErr }] = await Promise.all([
+        supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
+        supabase.from('tournaments').select('*').order('created_at'),
+      ])
+      if (psErr) throw psErr
+      if (tsErr) throw tsErr
+
+      setCategories(cats || [])
+      setPosts((ps as any) || [])
+      setTournaments(ts || [])
+      await loadStats()
+    } catch (e) {
+      console.error('[home] failed to load forum data:', e)
+      setError(t.loadError)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function getTbilisiTime(date: Date) {
@@ -160,6 +181,8 @@ export default function HomePage() {
             </div>
             {loading ? (
               <div className="p-8 text-center text-gray-400">{t.loading}</div>
+            ) : error ? (
+              <ErrorState message={error} retryLabel={t.retry} onRetry={load} />
             ) : categories.map(cat => (
               <Link key={cat.id} href={`/category/${cat.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0">
                 <div className="w-10 h-10 bg-brand-50 dark:bg-brand-900/30 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
@@ -184,6 +207,8 @@ export default function HomePage() {
             </div>
             {loading ? (
               <div className="p-8 text-center text-gray-400">{t.loading}</div>
+            ) : error ? (
+              <ErrorState message={error} retryLabel={t.retry} onRetry={load} />
             ) : posts.length === 0 ? (
               <div className="p-8 text-center text-gray-400">
                 <div className="text-3xl mb-2">♠</div>

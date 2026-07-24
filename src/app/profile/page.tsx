@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar, { AVATARS, AvatarId } from '@/components/PokerAvatar'
+import ErrorState from '@/components/ErrorState'
 
 export default function ProfilePage() {
   const { t } = useApp()
@@ -19,19 +20,24 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [usernameError, setUsernameError] = useState<string | null>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    async function load() {
+  async function load() {
+    setLoading(true)
+    setPageError(null)
+    try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth'); return }
       setUserId(user.id)
 
-      const [{ data: profile }, { count }] = await Promise.all([
+      const [{ data: profile, error: profErr }, { count, error: countErr }] = await Promise.all([
         supabase.from('profiles').select('username, avatar, signature, created_at').eq('id', user.id).single(),
         supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       ])
+      if (profErr) throw profErr
+      if (countErr) throw countErr
 
       if (profile) {
         setUsername(profile.username || '')
@@ -47,8 +53,15 @@ export default function ProfilePage() {
         }
       }
       setPostCount(count ?? 0)
+    } catch (e) {
+      console.error('[profile] failed to load:', e)
+      setPageError(t.loadError)
+    } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -88,6 +101,12 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  )
+
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={load} />
+    </div>
   )
 
   const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"

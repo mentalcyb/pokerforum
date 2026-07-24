@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
+import ErrorState from '@/components/ErrorState'
 import allTournaments from '@/data/tournaments'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -20,11 +21,14 @@ export default function CategoryPage() {
   const [category, setCategory] = useState<Category | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    async function load() {
-      const [{ data: cat }, { data: ps }] = await Promise.all([
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
+      const [{ data: cat, error: catErr }, { data: ps, error: psErr }] = await Promise.all([
         supabase.from('categories').select('*').eq('id', params.id).single(),
         supabase
           .from('posts')
@@ -32,10 +36,19 @@ export default function CategoryPage() {
           .eq('category_id', params.id)
           .order('created_at', { ascending: false }),
       ])
+      if (catErr) throw catErr
+      if (psErr) throw psErr
       setCategory(cat)
       setPosts((ps as unknown as Post[]) ?? [])
+    } catch (e) {
+      console.error('[category] failed to load:', e)
+      setError(t.loadError)
+    } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
@@ -51,6 +64,12 @@ export default function CategoryPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  )
+
+  if (error) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={error} retryLabel={t.retry} onRetry={load} />
+    </div>
   )
 
   if (!category) return (

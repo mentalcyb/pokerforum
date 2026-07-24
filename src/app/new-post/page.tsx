@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import ImageUploader from '@/components/ImageUploader'
+import ErrorState from '@/components/ErrorState'
 
 type Category = { id: number; name: string }
 
@@ -16,17 +17,33 @@ function NewPostForm() {
   const [categoryId, setCategoryId] = useState<number | ''>('')
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const supabase = createClient()
 
+  async function init() {
+    setInitializing(true)
+    setPageError(null)
+    try {
+      const preselected = searchParams.get('category')
+      if (preselected) setCategoryId(Number(preselected))
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) { router.push('/auth'); return }
+      setUser(authData.user)
+      const { data: cats, error: catsErr } = await supabase.from('categories').select('id, name')
+      if (catsErr) throw catsErr
+      setCategories(cats || [])
+    } catch (e) {
+      console.error('[new-post] failed to initialize:', e)
+      setPageError(t.loadError)
+    } finally {
+      setInitializing(false)
+    }
+  }
+
   useEffect(() => {
-    const preselected = searchParams.get('category')
-    if (preselected) setCategoryId(Number(preselected))
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.push('/auth')
-      else setUser(data.user)
-    })
-    supabase.from('categories').select('id, name').then(({ data }) => setCategories(data || []))
+    init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -45,6 +62,16 @@ function NewPostForm() {
     }
     setLoading(false)
   }
+
+  if (initializing) return (
+    <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
+  )
+
+  if (pageError) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <ErrorState message={pageError} retryLabel={t.retry} onRetry={init} />
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
