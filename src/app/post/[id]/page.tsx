@@ -17,13 +17,18 @@ type Post = {
 }
 type Reply = { id: number; content: string; created_at: string; user_id?: string; profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean } }
 
+const REPLY_PAGE_SIZE = 30
+
 export default function PostPage() {
   const { t } = useApp()
   const params = useParams()
   const router = useRouter()
   const [post, setPost] = useState<Post | null>(null)
   const [replies, setReplies] = useState<Reply[]>([])
+  const [hasMoreReplies, setHasMoreReplies] = useState(false)
+  const [loadingMoreReplies, setLoadingMoreReplies] = useState(false)
   const [replyText, setReplyText] = useState('')
+  const [replyError, setReplyError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
@@ -90,19 +95,24 @@ export default function PostPage() {
       }
       setPost(current as any)
 
+      // Fetch the most recent REPLY_PAGE_SIZE replies (newest first), then
+      // reverse to chronological order for display — bounds the payload on
+      // long-running threads instead of fetching every reply ever posted.
       const { data: r, error: rErr } = await supabase.from('replies')
         .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
-        .eq('post_id', params.id).order('created_at')
+        .eq('post_id', params.id).order('created_at', { ascending: false }).limit(REPLY_PAGE_SIZE)
 
+      let latestReplies: any = r
       if (rErr) {
         // Retry without signature
         const { data: r2 } = await supabase.from('replies')
           .select('id, content, created_at, user_id, profiles(username, avatar, is_moderator)')
-          .eq('post_id', params.id).order('created_at')
-        setReplies((r2 as any) || [])
-      } else {
-        setReplies((r as any) || [])
+          .eq('post_id', params.id).order('created_at', { ascending: false }).limit(REPLY_PAGE_SIZE)
+        latestReplies = r2
       }
+      const latest = ((latestReplies as any) || []).slice().reverse()
+      setReplies(latest)
+      setHasMoreReplies(latest.length === REPLY_PAGE_SIZE)
 
       if (current) {
         await supabase.from('posts').update({ view_count: current.view_count + 1 }).eq('id', params.id)
@@ -156,11 +166,45 @@ export default function PostPage() {
     if (!user || !replyText.trim()) return
     if (isBanned) return
     setLoading(true)
-    await supabase.from('replies').insert({ content: replyText, user_id: user.id, post_id: params.id })
-    await supabase.from('posts').update({ reply_count: (post?.reply_count || 0) + 1 }).eq('id', params.id)
-    setReplyText('')
-    await loadPost()
-    setLoading(false)
+    setReplyError(null)
+    try {
+      const { data, error } = await supabase.from('replies')
+        .insert({ content: replyText, user_id: user.id, post_id: params.id })
+        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
+        .single()
+      if (error) throw error
+      await supabase.from('posts').update({ reply_count: (post?.reply_count || 0) + 1 }).eq('id', params.id)
+      setReplies(prev => [...prev, data as any])
+      setPost(prev => prev ? { ...prev, reply_count: prev.reply_count + 1 } : prev)
+      setReplyText('')
+    } catch (err) {
+      console.error('[PostPage] failed to submit reply:', err)
+      setReplyError(t.loadError)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadMoreReplies() {
+    if (!replies.length || loadingMoreReplies) return
+    setLoadingMoreReplies(true)
+    try {
+      const oldest = replies[0].created_at
+      const { data, error } = await supabase.from('replies')
+        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
+        .eq('post_id', params.id)
+        .lt('created_at', oldest)
+        .order('created_at', { ascending: false })
+        .limit(REPLY_PAGE_SIZE)
+      if (error) throw error
+      const older = ((data as any) || []).slice().reverse()
+      setReplies(prev => [...older, ...prev])
+      setHasMoreReplies(older.length === REPLY_PAGE_SIZE)
+    } catch (e) {
+      console.warn('[PostPage] failed to load more replies:', e)
+    } finally {
+      setLoadingMoreReplies(false)
+    }
   }
 
   function insertAtCursor(text: string) {
@@ -310,6 +354,15 @@ export default function PostPage() {
       </div>
 
       {/* Replies */}
+      {hasMoreReplies && (
+        <button
+          onClick={loadMoreReplies}
+          disabled={loadingMoreReplies}
+          className="w-full mb-3 py-2 text-xs font-medium text-brand-600 border border-brand-200 dark:border-brand-800 rounded-xl hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors disabled:opacity-50"
+        >
+          {loadingMoreReplies ? t.loading : '↑ Load earlier replies'}
+        </button>
+      )}
       {replies.map(r => (
         <div key={r.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-3">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -343,6 +396,9 @@ export default function PostPage() {
           <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-3">{t.reply}</h3>
           {isBanned && (
             <div className="mb-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">🚫 {t.bannedMessage}</div>
+          )}
+          {replyError && (
+            <div className="mb-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">{replyError}</div>
           )}
           <form onSubmit={handleReply} className="space-y-3">
             <textarea

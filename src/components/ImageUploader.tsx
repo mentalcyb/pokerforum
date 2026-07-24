@@ -22,18 +22,24 @@ export default function ImageUploader({ userId, onInsert }: Props) {
     setError(null)
     setUploading(true)
 
-    const ext = file.name.split('.').pop()
-    const path = `${userId}/${Date.now()}.${ext}`
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${userId}/${Date.now()}.${ext}`
 
-    const { error: upErr } = await supabase.storage
-      .from('images')
-      .upload(path, file, { cacheControl: '3600', upsert: false })
+      const { error: upErr } = await supabase.storage
+        .from('images')
+        .upload(path, file, { cacheControl: '3600', upsert: false })
 
-    if (upErr) { setError(upErr.message); setUploading(false); return }
+      if (upErr) { setError(upErr.message); return }
 
-    const { data } = supabase.storage.from('images').getPublicUrl(path)
-    onInsert(data.publicUrl)
-    setUploading(false)
+      const { data } = supabase.storage.from('images').getPublicUrl(path)
+      onInsert(data.publicUrl)
+    } catch (e) {
+      console.error('[ImageUploader] upload failed:', e)
+      setError(t.loadError)
+    } finally {
+      setUploading(false)
+    }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {

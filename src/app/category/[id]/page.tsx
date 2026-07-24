@@ -15,31 +15,38 @@ const CATEGORY_ICONS: Record<string, string> = {
 interface Category { id: number; name: string; description: string; icon: string; post_count: number }
 interface Post { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string } | null }
 
+const PAGE_SIZE = 20
+
 export default function CategoryPage() {
   const { t } = useApp()
   const params = useParams()
   const [category, setCategory] = useState<Category | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
+  const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
-  async function load() {
+  async function load(pageToLoad: number) {
     setLoading(true)
     setError(null)
     try {
+      const from = pageToLoad * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
       const [{ data: cat, error: catErr }, { data: ps, error: psErr }] = await Promise.all([
         supabase.from('categories').select('*').eq('id', params.id).single(),
         supabase
           .from('posts')
           .select('id, title, created_at, reply_count, view_count, profiles(username, avatar)')
           .eq('category_id', params.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .range(from, to),
       ])
       if (catErr) throw catErr
       if (psErr) throw psErr
       setCategory(cat)
       setPosts((ps as unknown as Post[]) ?? [])
+      setPage(pageToLoad)
     } catch (e) {
       console.error('[category] failed to load:', e)
       setError(t.loadError)
@@ -49,9 +56,11 @@ export default function CategoryPage() {
   }
 
   useEffect(() => {
-    load()
+    load(0)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
+
+  const totalPages = category ? Math.max(1, Math.ceil(category.post_count / PAGE_SIZE)) : 1
 
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime()
@@ -68,7 +77,7 @@ export default function CategoryPage() {
 
   if (error) return (
     <div className="flex items-center justify-center min-h-screen">
-      <ErrorState message={error} retryLabel={t.retry} onRetry={load} />
+      <ErrorState message={error} retryLabel={t.retry} onRetry={() => load(page)} />
     </div>
   )
 
@@ -155,6 +164,26 @@ export default function CategoryPage() {
               ))
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <button
+                onClick={() => load(page - 1)}
+                disabled={page <= 0 || loading}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                ← Prev
+              </button>
+              <span className="text-xs text-gray-400">{page + 1} / {totalPages}</span>
+              <button
+                onClick={() => load(page + 1)}
+                disabled={page >= totalPages - 1 || loading}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sidebar — Tournaments */}

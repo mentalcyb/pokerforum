@@ -2,10 +2,14 @@ name: Supabase Health Check
 
 on:
   schedule:
-    # Runs daily. Also acts as a keep-alive ping so Supabase's free-tier
-    # inactivity auto-pause (triggers after ~7 days with no API activity)
-    # never has a chance to kick in.
-    - cron: '0 9 * * *'
+    # Every 15 minutes: this repo is public, so GitHub Actions minutes are
+    # unlimited/free here — no reason to run less often. Also acts as a
+    # keep-alive ping so Supabase's free-tier inactivity auto-pause (triggers
+    # after ~7 days with no API activity) never has a chance to kick in.
+    # Note: GitHub auto-disables scheduled workflows after 60 days with no
+    # commits to the repo — harmless for an actively-developed project, but
+    # worth knowing if this repo ever goes quiet for two months straight.
+    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 
 jobs:
