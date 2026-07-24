@@ -14,7 +14,7 @@ const ICON_MAP: Record<string, string> = {
 interface UserRow { id: string; username: string; is_admin: boolean; is_moderator: boolean; is_banned: boolean; created_at: string }
 interface SecurityUser { id: string; username: string; email: string; is_banned: boolean; is_admin: boolean; is_moderator: boolean; created_at: string; post_count: number; last_login: string | null; last_ip: string | null }
 interface SessionRow { id: string; user_id: string; ip_address: string; user_agent: string; action: string; created_at: string; profiles: { username: string } | null }
-interface PostRow { id: number; title: string; content: string; created_at: string; profiles: { username: string } | null; categories: { name: string } | null }
+interface PostRow { id: number; title: string; content: string; created_at: string; category_id: number | null; profiles: { username: string } | null; categories: { name: string } | null }
 interface CategoryRow { id: number; name: string; description: string; icon: string; post_count: number }
 interface TournamentRow { id: number; name: string; date: string; buyin: string; status: string }
 interface PostEditState { id: number; title: string; content: string }
@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [newCat, setNewCat] = useState<NewCatState | null>(null)
   const [tournamentEditing, setTournamentEditing] = useState<TournamentEditState | null>(null)
   const [newTournament, setNewTournament] = useState<NewTournamentState | null>(null)
+  const [movingPost, setMovingPost] = useState<{ id: number; categoryId: number | null } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -74,7 +75,7 @@ export default function AdminPage() {
 
   async function loadData() {
     const [{ data: p, error: pErr }, { data: u, error: uErr }, { data: c, error: cErr }, { data: tr, error: trErr }] = await Promise.all([
-      supabase.from('posts').select('id, title, content, created_at, profiles(username), categories(name)').order('created_at', { ascending: false }),
+      supabase.from('posts').select('id, title, content, created_at, category_id, profiles(username), categories(name)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, username, is_admin, is_moderator, is_banned, created_at').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('id'),
       supabase.from('tournaments').select('*').order('created_at'),
@@ -109,6 +110,20 @@ export default function AdminPage() {
     if (e) { setError(`update error: ${e.message}`); setSaving(false); return }
     setPosts(prev => prev.map(p => p.id === postEditing.id ? { ...p, ...postEditing } : p))
     setPostEditing(null); setSaving(false)
+  }
+
+  async function movePost() {
+    if (!movingPost || movingPost.categoryId == null) return
+    setError(null); setSaving(true)
+    const { error: e } = await supabase.from('posts')
+      .update({ category_id: movingPost.categoryId }).eq('id', movingPost.id)
+    if (e) { setError(`move error: ${e.message}`); setSaving(false); return }
+    const cat = categories.find(c => c.id === movingPost.categoryId)
+    setPosts(prev => prev.map(p => p.id === movingPost.id
+      ? { ...p, category_id: movingPost.categoryId, categories: cat ? { name: cat.name } : p.categories }
+      : p
+    ))
+    setMovingPost(null); setSaving(false)
   }
 
   // --- Categories ---
@@ -295,6 +310,10 @@ export default function AdminPage() {
                       <button onClick={() => setPostEditing({ id: post.id, title: post.title, content: post.content })}
                         className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
                         {t.edit}
+                      </button>
+                      <button onClick={() => setMovingPost({ id: post.id, categoryId: post.category_id })}
+                        className="px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg text-purple-600 hover:bg-purple-100 transition-colors">
+                        Move
                       </button>
                       <button onClick={() => deletePost(post.id)}
                         className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
@@ -685,6 +704,41 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── MOVE TOPIC MODAL ── */}
+      {movingPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 w-full max-w-sm shadow-xl">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Move Topic</h2>
+              <button onClick={() => setMovingPost(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Select the target category:</p>
+              <select
+                value={movingPost.categoryId ?? ''}
+                onChange={e => setMovingPost({ ...movingPost, categoryId: Number(e.target.value) })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="" disabled>Select category…</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{ICON_MAP[cat.icon] || '♠'} {cat.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button onClick={movePost} disabled={saving || movingPost.categoryId == null}
+                  className="px-4 py-2 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                  {saving ? 'Moving…' : 'Move Topic'}
+                </button>
+                <button onClick={() => setMovingPost(null)}
+                  className="px-4 py-2 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  {t.cancel}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
