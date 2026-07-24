@@ -13,7 +13,6 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 type Category = { id: number; name: string; description: string; icon: string; post_count: number }
 type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
-type Tournament = { id: number; name: string; date: string; buyin: string; status: string }
 type Stats = { members: number; posts: number; online: number }
 type OnlineUser = { id: string; username: string; avatar: string | null; is_admin: boolean }
 
@@ -21,7 +20,6 @@ export default function HomePage() {
   const { t } = useApp()
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<Post[]>([])
-  const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,16 +94,14 @@ export default function HomePage() {
         cats = catsFallback
       }
 
-      const [{ data: ps, error: psErr }, { data: ts, error: tsErr }] = await Promise.all([
-        supabase.from('posts').select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('tournaments').select('*').order('created_at'),
-      ])
+      const { data: ps, error: psErr } = await supabase
+        .from('posts')
+        .select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)')
+        .order('created_at', { ascending: false }).limit(10)
       if (psErr) throw psErr
-      if (tsErr) throw tsErr
 
       setCategories(cats || [])
       setPosts((ps as any) || [])
-      setTournaments(ts || [])
       await loadStats()
     } catch (e) {
       console.error('[home] failed to load forum data:', e)

@@ -83,7 +83,10 @@ export default function AdminPage() {
     if (pErr) throw pErr
     if (uErr) throw uErr
     if (cErr) throw cErr
-    if (trErr) throw trErr
+    // Non-fatal: the tournaments table doesn't currently exist in the database
+    // (the public /tournaments page is backed by a static data file instead).
+    // Don't let a broken Tournaments tab take down Posts/Users/Categories too.
+    if (trErr) console.warn('[admin] tournaments table unavailable:', trErr.message)
     setPosts((p as unknown as PostRow[]) ?? [])
     setUsers((u as unknown as UserRow[]) ?? [])
     setCategories((c as unknown as CategoryRow[]) ?? [])
