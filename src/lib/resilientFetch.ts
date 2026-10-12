@@ -30,7 +30,9 @@ export function createResilientFetch(): typeof fetch {
       const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
       try {
-        const response = await fetch(input, { ...init, signal: controller.signal })
+        // cache: 'no-store' — Next.js caches fetch() in GET route handlers by default, which
+        // made API routes return stale database rows. Database reads must always be live.
+        const response = await fetch(input, { cache: 'no-store', ...init, signal: controller.signal })
         clearTimeout(timeoutId)
 
         if (retriable && response.status >= 500 && attempt < attempts - 1) {

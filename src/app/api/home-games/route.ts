@@ -4,6 +4,7 @@ import { GameError, initialState, sit, TableConfig, validateConfig } from '@/lib
 import { getViewer, newCode } from '@/lib/poker/server'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
 
 const MAX_OPEN_TABLES_PER_HOST = 5
 

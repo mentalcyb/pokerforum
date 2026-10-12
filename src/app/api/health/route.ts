@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase-admin'
 
+// Never serve cached database responses from this route
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 type CheckResult = { ok: boolean; detail?: string }
 
 // Accepts any thenable: Supabase query builders are PromiseLike, not real Promises
