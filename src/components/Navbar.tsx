@@ -90,7 +90,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 whitespace-nowrap">
           <button onClick={() => setLang(lang === 'ka' ? 'en' : 'ka')}
             className="px-2 py-1 text-sm rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-700 dark:text-gray-300">
             {lang === 'ka' ? 'EN' : 'ქარ'}
@@ -111,8 +111,9 @@ export default function Navbar() {
           {user ? (
             <>
               {(isAdmin || isMod) && (
-                <Link href="/admin" className="px-3 py-1.5 text-sm text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium">
-                  {isAdmin ? `⚙️ ${t.adminBadge}` : `🛡️ ${t.isModerator}`}
+                <Link href="/admin" title={isAdmin ? t.adminBadge : t.isModerator}
+                  className="px-2.5 py-1.5 text-sm text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium">
+                  {isAdmin ? '⚙️' : '🛡️'}<span className="hidden xl:inline ml-1">{isAdmin ? t.adminBadge : t.isModerator}</span>
                 </Link>
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
@@ -131,8 +132,12 @@ export default function Navbar() {
               <Link href="/profile" className="flex items-center hover:opacity-80 transition-opacity" title={t.profile}>
                 <PokerAvatar avatarId={avatar} size={30} />
               </Link>
-              <button onClick={handleLogout} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                {t.logout}
+              <button onClick={handleLogout} title={t.logout}
+                className="px-2 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                <span className="hidden xl:inline">{t.logout}</span>
               </button>
             </>
           ) : (
