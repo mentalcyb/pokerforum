@@ -8,7 +8,8 @@ import { getViewer, loadTable, mutateTable, viewFor } from '@/lib/poker/server'
 export const dynamic = 'force-dynamic'
 
 const PLAYER_ACTIONS = ['fold', 'check', 'call', 'raise'] as const
-const HOST_ACTIONS = ['start', 'pause', 'resume', 'close'] as const
+// Any seated player may deal the first hand; pausing stays with the host.
+const HOST_ACTIONS = ['pause', 'resume', 'close'] as const
 
 function err(code: string, status = 400) {
   return NextResponse.json({ error: code }, { status })
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
           needSeat()
           return { state: setSittingOut(state, mySeat, false) }
         case 'start':
+          if (mySeat < 0 && !isHost) throw new GameError('not_seated')
           return startGame(state, secret, ctx)
         case 'pause':
           return { state: setPaused(state, true) }
