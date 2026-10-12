@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { homeGamesFetch } from '@/lib/poker/client'
 import type { TableView } from '@/lib/poker/server'
 import type { GameState, LogEntry, Player } from '@/lib/poker/engine'
+import { tournamentElapsed } from '@/lib/poker/engine'
 import { handCategory } from '@/lib/poker/evaluate'
 import PlayingCard from '@/components/poker/PlayingCard'
 import PokerAvatar from '@/components/PokerAvatar'
@@ -65,6 +66,12 @@ function logLine(e: LogEntry, t: T): string {
       const label = e.street === 'flop' ? t.streetFlop : e.street === 'turn' ? t.streetTurn : t.streetRiver
       return `— ${label}: ${(e.cards ?? []).map(c => c.replace('T', '10')).join(' ')}`
     }
+    case 'level':
+      return e.blinds ? t.hgLogLevel(e.place ?? 0, e.blinds.sb, e.blinds.bb) : ''
+    case 'out':
+      return t.hgLogOut(n, e.place ?? 0)
+    case 'champion':
+      return t.hgLogChampion(n)
     case 'win':
       return t.hgLogText.win(n, a) + (e.hand !== undefined ? ` — ${t.hgHandNames[e.hand]}` : '')
     default: {
@@ -241,6 +248,20 @@ export default function HomeGameTablePage() {
   const potInMiddle = s.seats.reduce((sum, p) => sum + (p ? p.committed - p.bet : 0), 0)
   const myHand = me && !me.folded && view.myCards.length === 2 ? handCategory([...view.myCards, ...s.board]) : null
 
+  // Tournament clock
+  const tour = s.tournament
+  const tourRunning = !!tour && s.started && !tour.finished
+  const blindsNow = s.blinds ?? { sb: view.config.smallBlind, bb: view.config.bigBlind }
+  const levelMs = (tour?.levelMinutes ?? 10) * 60_000
+  const nextLevelIn = tour && tour.startedAt !== null && tour.level < tour.levels.length - 1
+    ? Math.max(0, (tour.level + 1) * levelMs - tournamentElapsed(tour, serverNow))
+    : null
+  const nextBlinds = tour && tour.level < tour.levels.length - 1 ? tour.levels[tour.level + 1] : null
+  const playersLeft = s.seats.filter(p => p && p.stack + p.committed > 0).length
+  const champion = tour?.finished ? tour.places.find(p => p.place === 1) : undefined
+  const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`
+  const startLabel = tour?.finished ? t.hgPlayAgain : t.hgStart
+
   function toggleFourColor() { setFourColor(v => { writePref('poker-4color', !v); return !v }) }
   function toggleSound() { setSound(v => { writePref('poker-sound', !v); return !v }) }
 
@@ -294,7 +315,13 @@ export default function HomeGameTablePage() {
           <Link href="/home-games" className="text-xs text-gray-500 hover:text-brand-600">{t.hgBackToLobby}</Link>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">🃏 {view.name}</h1>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {t.hgBlinds}: {view.config.smallBlind}/{view.config.bigBlind}
+            {tour && <span className="mr-1 font-semibold text-purple-600 dark:text-purple-300">🏆 {t.hgTournamentBadge} ·</span>}
+            {tour && tourRunning && <>{t.hgLevel(tour.level + 1)} · </>}
+            {t.hgBlinds}: {blindsNow.sb}/{blindsNow.bb}
+            {tourRunning && nextLevelIn !== null && nextBlinds && (
+              <> · {t.hgNextLevelIn}: <span className="font-mono font-semibold text-gray-700 dark:text-gray-200">{nextLevelIn > 0 ? mmss(nextLevelIn) : '0:00'}</span> ({nextBlinds.sb}/{nextBlinds.bb})</>
+            )}
+            {tourRunning && tour && <> · {t.hgPlayersLeft(playersLeft, tour.entrants)}</>}
             {s.handNo > 0 && <> · {t.hgHand(s.handNo)}</>}
             {' · '}<span className="text-amber-700 dark:text-amber-400">🪙 {t.hgPlayChips}</span>
           </div>
@@ -350,7 +377,12 @@ export default function HomeGameTablePage() {
                   ))}
                 </div>
               )}
-              {s.phase === 'waiting' && (
+              {champion && (
+                <div className="px-4 py-2 rounded-xl bg-amber-400 text-amber-950 text-sm sm:text-base font-bold text-center shadow-lg">
+                  {t.hgChampionBanner(champion.name)}
+                </div>
+              )}
+              {s.phase === 'waiting' && !champion && (
                 <div className="px-3 py-1.5 rounded-lg bg-black/40 text-white/90 text-xs text-center max-w-[75%]">
                   {eligibleCount(s) < 2 ? t.hgWaitingPlayers : !s.started ? t.hgWaitingHost : s.paused ? t.hgPausedNote : t.hgNextHand}
                 </div>
@@ -369,7 +401,7 @@ export default function HomeGameTablePage() {
             {s.seats.map((p, i) => {
               const pos = seatPos(i, { x: 44, y: 42 })
               if (!p) {
-                const canSit = loggedIn && view.mySeat < 0 && !view.closed
+                const canSit = loggedIn && view.mySeat < 0 && !view.closed && !tourRunning
                 return (
                   <div key={i} className="absolute -translate-x-1/2 -translate-y-1/2" style={pos}>
                     {canSit ? (
@@ -431,7 +463,7 @@ export default function HomeGameTablePage() {
           <div className="mt-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4">
             {view.mySeat < 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                {loggedIn ? t.hgSpectating : <>{t.hgLoginRequired} <Link href="/auth?mode=login" className="text-brand-600 font-medium">{t.login}</Link></>}
+                {loggedIn ? (tourRunning ? t.hgTournamentRunning : t.hgSpectating) : <>{t.hgLoginRequired} <Link href="/auth?mode=login" className="text-brand-600 font-medium">{t.login}</Link></>}
               </p>
             ) : myTurn && me ? (
               <div className="space-y-3">
@@ -479,7 +511,7 @@ export default function HomeGameTablePage() {
               <div className="flex flex-wrap items-center gap-2">
                 {!view.isHost && s.phase === 'waiting' && !s.started && (
                   <button onClick={() => send('start')} disabled={busy || eligibleCount(s) < 2}
-                    className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgStart}</button>
+                    className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{startLabel}</button>
                 )}
                 {view.myCards.length > 0 && me && !me.folded && (
                   <div className="flex items-center gap-3 mr-2">
@@ -489,7 +521,7 @@ export default function HomeGameTablePage() {
                   )}
                   </div>
                 )}
-                {me && me.stack === 0 && !(s.phase === 'playing' && me.inHand && !me.folded) && (
+                {!tour && me && me.stack === 0 && !(s.phase === 'playing' && me.inHand && !me.folded) && (
                   <button onClick={() => send('rebuy')} disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgRebuy(view.config.startingStack)}</button>
                 )}
                 {me && (me.sittingOut
@@ -505,7 +537,7 @@ export default function HomeGameTablePage() {
               <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">{t.hgHostBadge}</span>
                 {!s.started || (s.phase === 'waiting' && !s.paused)
-                  ? <button onClick={() => send('start')} disabled={busy || eligibleCount(s) < 2} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgStart}</button>
+                  ? <button onClick={() => send('start')} disabled={busy || eligibleCount(s) < 2} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{startLabel}</button>
                   : s.paused
                     ? <button onClick={() => send('resume')} disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgResume}</button>
                     : <button onClick={() => send('pause')} disabled={busy} className={`${btn} border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300`}>{t.hgPause}</button>}
@@ -521,11 +553,13 @@ export default function HomeGameTablePage() {
                 <form onSubmit={saveSettings} className="space-y-2">
                   <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">{t.hgSettings}</div>
                   <div className="flex flex-wrap items-end gap-2">
-                    {([
-                      ['smallBlind', 'SB'],
-                      ['bigBlind', 'BB'],
-                      ['turnSeconds', `${t.hgTurnTime} (${t.hgSeconds})`],
-                    ] as const).map(([key, label]) => (
+                    {(tour && s.started
+                      ? ([['turnSeconds', `${t.hgTurnTime} (${t.hgSeconds})`]] as const)
+                      : ([
+                        ['smallBlind', 'SB'],
+                        ['bigBlind', 'BB'],
+                        ['turnSeconds', `${t.hgTurnTime} (${t.hgSeconds})`],
+                      ] as const)).map(([key, label]) => (
                       <label key={key} className="text-[11px] text-gray-500">
                         {label}
                         <input type="number" min={1} value={settingsForm[key]}
@@ -535,7 +569,7 @@ export default function HomeGameTablePage() {
                     ))}
                     <button type="submit" disabled={busy || s.phase === 'playing'} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.save}</button>
                   </div>
-                  <p className="text-[11px] text-gray-400">{t.hgSettingsHint}</p>
+                  <p className="text-[11px] text-gray-400">{tour && s.started ? t.hgBlindsLocked : t.hgSettingsHint}</p>
                 </form>
                 <div>
                   <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t.hgPlayersList}</div>
@@ -565,7 +599,7 @@ export default function HomeGameTablePage() {
             {(['chat', 'log', 'ledger'] as const).map(k => (
               <button key={k} onClick={() => setTab(k)}
                 className={`flex-1 px-3 py-2.5 text-xs font-semibold ${tab === k ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-500'}`}>
-                {k === 'chat' ? `💬 ${t.hgChat}` : k === 'log' ? t.hgLog : t.hgLedger}
+                {k === 'chat' ? `💬 ${t.hgChat}` : k === 'log' ? t.hgLog : tour ? `🏆 ${t.hgStandings}` : t.hgLedger}
               </button>
             ))}
           </div>
@@ -596,6 +630,41 @@ export default function HomeGameTablePage() {
                   {logLine(e, t)}
                 </div>
               ))}
+            </div>
+          ) : tour ? (
+            <div className="px-4 py-3 text-sm">
+              <table className="w-full text-xs">
+                <tbody>
+                  {s.seats
+                    .filter((p): p is Player => !!p && (tourRunning || !!tour.finished))
+                    .sort((a, b) => (b.stack + b.committed) - (a.stack + a.committed))
+                    .filter(p => !tour.places.some(pl => pl.userId === p.userId))
+                    .map(p => (
+                      <tr key={p.userId} className="border-t border-gray-50 dark:border-gray-800">
+                        <td className="py-1.5 w-8 text-gray-400">—</td>
+                        <td className="py-1.5 text-gray-800 dark:text-gray-200 truncate max-w-[120px]">{p.name}</td>
+                        <td className="py-1.5 text-right font-semibold text-emerald-600">{(p.stack + p.committed).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  {tour.places.slice().sort((a, b) => a.place - b.place).map(pl => (
+                    <tr key={pl.userId + pl.place} className="border-t border-gray-50 dark:border-gray-800">
+                      <td className="py-1.5 w-8 font-bold text-gray-700 dark:text-gray-200">{pl.place === 1 ? '🏆' : `#${pl.place}`}</td>
+                      <td className="py-1.5 text-gray-800 dark:text-gray-200 truncate max-w-[120px]">{pl.name}</td>
+                      <td className="py-1.5 text-right text-gray-400">{pl.place === 1 ? '' : '❌'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                <div className="font-semibold mb-1">{t.hgStructure} ({tour.levelMinutes} {t.hgMinutes})</div>
+                <div className="grid grid-cols-3 gap-x-2 gap-y-0.5">
+                  {tour.levels.slice(0, 15).map((l, i) => (
+                    <span key={i} className={i === tour.level && tourRunning ? 'font-bold text-purple-600 dark:text-purple-300' : ''}>
+                      {i + 1}. {l.sb}/{l.bb}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="px-4 py-3">
