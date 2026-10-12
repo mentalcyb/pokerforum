@@ -60,6 +60,15 @@ function playChips() {
   } catch { /* audio unavailable */ }
 }
 
+// Table felt colors a player can pick (saved per browser). Full class names so Tailwind keeps them.
+const FELTS = {
+  green: { felt: 'from-emerald-700 to-emerald-900', swatch: 'bg-emerald-600' },
+  blue: { felt: 'from-blue-700 to-blue-950', swatch: 'bg-blue-600' },
+  red: { felt: 'from-red-700 to-red-950', swatch: 'bg-red-700' },
+  black: { felt: 'from-gray-700 to-gray-950', swatch: 'bg-gray-800' },
+} as const
+type Felt = keyof typeof FELTS
+
 const CHIP_COLORS = ['#ef4444', '#2563eb', '#16a34a', '#111827', '#f59e0b']
 
 function playChime() {
@@ -125,6 +134,7 @@ export default function HomeGameTablePage() {
   const [tab, setTab] = useState<'chat' | 'log' | 'ledger'>('chat')
   const [fourColor, setFourColor] = useState(false)
   const [sound, setSound] = useState(true)
+  const [felt, setFelt] = useState<Felt>('green')
   const [chatText, setChatText] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [settingsForm, setSettingsForm] = useState({ smallBlind: '', bigBlind: '', turnSeconds: '' })
@@ -227,6 +237,10 @@ export default function HomeGameTablePage() {
   useEffect(() => {
     setFourColor(readPref('poker-4color', false))
     setSound(readPref('poker-sound', true))
+    try {
+      const saved = localStorage.getItem('poker-felt')
+      if (saved && saved in FELTS) setFelt(saved as Felt)
+    } catch { /* storage unavailable */ }
   }, [])
 
   // alert the player when it becomes their turn: chime + tab title
@@ -312,6 +326,10 @@ export default function HomeGameTablePage() {
   const startLabel = tour?.finished ? t.hgPlayAgain : t.hgStart
 
   function toggleFourColor() { setFourColor(v => { writePref('poker-4color', !v); return !v }) }
+  function chooseFelt(f: Felt) {
+    setFelt(f)
+    try { localStorage.setItem('poker-felt', f) } catch { /* storage unavailable */ }
+  }
   function toggleSound() { setSound(v => { writePref('poker-sound', !v); return !v }) }
 
   function sendChat(e: React.FormEvent) {
@@ -384,6 +402,12 @@ export default function HomeGameTablePage() {
             <span className={fourColor ? 'text-green-200' : 'text-gray-900 dark:text-gray-100'}>♣</span>
             <span className="ml-1 hidden sm:inline">{t.hg4Color}</span>
           </button>
+          <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700" role="group" aria-label={t.hgFelt} title={t.hgFelt}>
+            {(Object.keys(FELTS) as Felt[]).map(f => (
+              <button key={f} onClick={() => chooseFelt(f)} title={t.hgFeltNames[f]} aria-label={t.hgFeltNames[f]} aria-pressed={felt === f}
+                className={`w-4 h-4 rounded-full ${FELTS[f].swatch} ${felt === f ? 'ring-2 ring-offset-1 ring-amber-400 ring-offset-white dark:ring-offset-gray-900' : 'opacity-80 hover:opacity-100'}`} />
+            ))}
+          </div>
           <button onClick={toggleSound} title={t.hgSound}
             className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs">{sound ? '🔔' : '🔕'}</button>
         </div>
@@ -404,7 +428,7 @@ export default function HomeGameTablePage() {
         <div>
           {/* Table */}
           <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] mx-auto select-none">
-            <div className="absolute inset-[9%_5%] sm:inset-[12%_9%] rounded-[45%] bg-gradient-to-b from-emerald-700 to-emerald-900 border-[10px] border-amber-900/80 shadow-[inset_0_0_40px_rgba(0,0,0,0.45)]" />
+            <div className={`absolute inset-[9%_5%] sm:inset-[12%_9%] rounded-[45%] bg-gradient-to-b ${FELTS[felt].felt} border-[10px] border-amber-900/80 shadow-[inset_0_0_40px_rgba(0,0,0,0.45)] transition-colors`} />
 
             {/* Board & pot */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
