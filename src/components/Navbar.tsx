@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import PokerAvatar from '@/components/PokerAvatar'
+import { LanguageDropdown, LanguageSegmented } from '@/components/LanguageSwitcher'
 
 export default function Navbar() {
-  const { t, lang, setLang, dark, toggleDark } = useApp()
+  const { t, dark, toggleDark } = useApp()
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMod, setIsMod] = useState(false)
@@ -91,10 +92,7 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2 whitespace-nowrap">
-          <button onClick={() => setLang(lang === 'ka' ? 'en' : 'ka')}
-            className="px-2 py-1 text-sm rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-700 dark:text-gray-300">
-            {lang === 'ka' ? 'EN' : 'ქარ'}
-          </button>
+          <LanguageDropdown />
           <button onClick={toggleDark}
             className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
             title={dark ? t.lightMode : t.darkMode}>
@@ -189,10 +187,7 @@ export default function Navbar() {
 
           {/* Language + theme row */}
           <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <button onClick={() => { setLang(lang === 'ka' ? 'en' : 'ka') }}
-              className="flex-1 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-700 dark:text-gray-300 text-center">
-              {lang === 'ka' ? '🌐 EN' : '🌐 ქარ'}
-            </button>
+            <LanguageSegmented />
             <button onClick={toggleDark}
               className="flex-1 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300 text-center">
               {dark ? '☀️ ' + t.lightMode : '🌙 ' + t.darkMode}
