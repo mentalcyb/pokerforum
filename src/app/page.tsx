@@ -329,6 +329,13 @@ export default function HomePage() {
             )}
           </div>
 
+          <Link href="/home-games" className="block rounded-2xl p-5 bg-gradient-to-br from-emerald-700 to-emerald-900 text-white hover:opacity-95 transition-opacity">
+            <div className="text-2xl mb-2">🃏</div>
+            <h2 className="font-semibold mb-1">{t.hgPromoTitle}</h2>
+            <p className="text-sm text-emerald-100 mb-3">{t.hgPromoText}</p>
+            <span className="inline-block bg-white text-emerald-800 font-medium text-sm px-4 py-2 rounded-lg">{t.hgPromoCta}</span>
+          </Link>
+
           <div className="bg-brand-600 rounded-2xl p-5 text-white">
             <div className="text-2xl mb-2">♠</div>
             <div className="font-semibold mb-1">{t.newPost}</div>
