@@ -80,7 +80,7 @@ export const translations = {
     prevPage: 'წინა',
     securityTab: '🔒 უსაფრთხოება',
     // home games
-    homeGames: 'მაგიდა მეგობრებთან',
+    homeGames: 'ითამაშე',
     hgTitle: 'პოკერი მეგობრებთან',
     hgSubtitle: 'შექმენი პრივატული მაგიდა, გაუგზავნე ლინკი მეგობრებს და ითამაშეთ Hold\'em ბრაუზერში.',
     hgPlayChips: 'მხოლოდ სათამაშო ჩიპები — რეალური ფული არ გამოიყენება.',
@@ -321,7 +321,7 @@ export const translations = {
     tools: 'ხელსაწყოები',
     tournamentsNav: 'ტურნირები',
     handAnalyzer: 'ხელის ანალიზი',
-    oddsCalc: 'შანსების კალკულატორი',
+    oddsCalc: 'კალკულატორი',
     // dates
     months: ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'],
     weekdays: ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'],
@@ -545,7 +545,7 @@ export const translations = {
     prevPage: 'Prev',
     securityTab: '🔒 Security',
     // home games
-    homeGames: 'Home Games',
+    homeGames: 'Play',
     hgTitle: 'Poker with Friends',
     hgSubtitle: "Create a private table, send the link to your friends and play Hold'em right in the browser.",
     hgPlayChips: 'Play chips only — no real money involved.',
