@@ -164,6 +164,38 @@ export interface Secret {
   deck: Card[]
   /** hole cards keyed by seat index */
   hands: Record<string, Card[]>
+  /** the hand being played: who sat where with how many chips */
+  current?: HandStart
+  /** full record of the hand that just finished (saved by the server for replays) */
+  lastHand?: HandRecord
+}
+
+export interface HandStart {
+  handNo: number
+  startedAt: number
+  button: number
+  sb: number
+  bb: number
+  blinds: BlindLevel
+  maxSeats: number
+  players: { seat: number; userId: string; name: string; avatar: string | null; stack: number }[]
+}
+
+/**
+ * Everything needed to replay a finished hand. Contains every player's hole cards,
+ * so it's stored server-side only; the API hides cards a viewer isn't allowed to see.
+ */
+export interface HandRecord extends HandStart {
+  endedAt: number
+  cards: Record<string, Card[]>
+  board: Card[]
+  actions: LogEntry[]
+  results: PotResult[]
+  showdown: boolean
+  /** seats whose cards were shown to everyone (showdown or "show cards") */
+  revealed: number[]
+  /** chips won or lost in this hand, per seat */
+  net: Record<string, number>
 }
 
 export type Action =
@@ -187,7 +219,7 @@ export interface Ctx {
 
 type Result = { state: GameState; secret: Secret }
 
-const LOG_LIMIT = 60
+const LOG_LIMIT = 200
 const NEXT_HAND_DELAY_FOLD = 4000
 const NEXT_HAND_DELAY_SHOWDOWN = 7000
 /** consecutive timeouts before a player is sat out automatically */
@@ -581,6 +613,19 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
   // Heads-up: the button posts the small blind and acts first before the flop.
   const sb = dealt === 2 ? s.button : nextSeat(s, s.button, p => p.inHand)!
   const bb = nextSeat(s, sb, p => p.inHand)!
+  const current: HandStart = {
+    handNo: s.handNo,
+    startedAt: now,
+    button: s.button,
+    sb,
+    bb,
+    blinds,
+    maxSeats: s.seats.length,
+    players: s.seats
+      .map((p, i) => ({ p, i }))
+      .filter(x => x.p?.inHand)
+      .map(x => ({ seat: x.i, userId: x.p!.userId, name: x.p!.name, avatar: x.p!.avatar, stack: x.p!.stack })),
+  }
   log(s, { kind: 'blind', seat: sb, name: s.seats[sb]!.name, amount: put(s.seats[sb]!, blinds.sb) })
   log(s, { kind: 'blind', seat: bb, name: s.seats[bb]!.name, amount: put(s.seats[bb]!, blinds.bb) })
   s.currentBet = blinds.bb
@@ -599,7 +644,7 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
     for (const i of order) (hands[i] ??= []).push(deck.pop()!)
   }
 
-  return advance(s, { deck, hands }, ctx, bb)
+  return advance(s, { deck, hands, current }, ctx, bb)
 }
 
 /**
@@ -830,6 +875,26 @@ function endHand(s: GameState, sec: Secret, ctx: Ctx, showdown: boolean): Result
       log(s, { kind: 'win', seat: w.seat, name: w.name, amount: w.amount, hand: hand ?? undefined })
     }
     results.push({ amount: pot.amount, winners: paid, hand })
+  }
+
+  // Record the finished hand for replays (before anyone is removed from the table)
+  if (sec.current && sec.current.handNo === s.handNo) {
+    const net: Record<string, number> = {}
+    for (const pl of sec.current.players) {
+      const p = s.seats[pl.seat]
+      net[pl.seat] = (p && p.userId === pl.userId ? p.stack : 0) - pl.stack
+    }
+    sec.lastHand = {
+      ...sec.current,
+      endedAt: ctx.now,
+      cards: sec.hands,
+      board: s.board.slice(),
+      actions: s.log.filter(e => e.handNo === s.handNo && e.kind !== 'join' && e.kind !== 'leave' && e.kind !== 'rebuy'),
+      results,
+      showdown,
+      revealed: Object.keys(s.revealed).map(Number),
+      net,
+    }
   }
 
   // all chips are now back in stacks

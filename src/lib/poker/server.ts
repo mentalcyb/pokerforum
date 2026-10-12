@@ -3,7 +3,7 @@
 import { randomInt } from 'crypto'
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { cardsFor, Ctx, GameError, GameState, Secret, seatOf, TableConfig } from './engine'
+import { cardsFor, Ctx, GameError, GameState, HandRecord, Secret, seatOf, TableConfig } from './engine'
 
 export type TableRow = {
   id: string
@@ -91,6 +91,7 @@ export async function mutateTable(code: string, fn: Mutation): Promise<{ row: Ta
     })
     if (error) throw error
     if (newVersion !== -1) {
+      await saveFinishedHand(row.id, secret.lastHand, result.secret?.lastHand)
       return {
         row: { ...row, state: result.state, version: newVersion as number, player_ids: playerIds(row, result.state) },
         secret: result.secret ?? secret,
@@ -100,6 +101,29 @@ export async function mutateTable(code: string, fn: Mutation): Promise<{ row: Ta
     await new Promise(r => setTimeout(r, 40 + randomInt(80)))
   }
   throw new GameError('busy')
+}
+
+/** Store a hand for replays the first time we see it finished (best effort). */
+async function saveFinishedHand(tableId: string, before: HandRecord | undefined, after: HandRecord | undefined) {
+  if (!after) return
+  if (before && before.handNo === after.handNo && before.startedAt === after.startedAt) return
+  const { error } = await createAdminClient()
+    .from('poker_hands')
+    .insert({ table_id: tableId, hand_no: after.handNo, data: after })
+  // the history table is optional (supabase/home_games_history.sql); the game must not break without it
+  if (error) console.warn('[home-games] could not save hand history:', error.message)
+}
+
+/**
+ * A finished hand as one viewer may see it: their own hole cards and any cards
+ * that were shown to the table; everyone else's cards stay hidden.
+ */
+export function handForViewer(h: HandRecord, viewerId: string | null) {
+  const visible = new Set<number>(h.revealed)
+  for (const p of h.players) if (viewerId && p.userId === viewerId) visible.add(p.seat)
+  const cards: Record<string, string[]> = {}
+  for (const p of h.players) cards[p.seat] = visible.has(p.seat) ? (h.cards[p.seat] ?? []) : []
+  return { ...h, cards }
 }
 
 /** What one viewer gets: public state plus only their own hole cards. */

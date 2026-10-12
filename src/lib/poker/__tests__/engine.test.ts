@@ -558,3 +558,37 @@ test('after the hand ends, showing reveals immediately; flag resets next hand', 
   const s = sit(r.state, cfg, 4, { userId: 'u-D', name: 'D', avatar: null })
   assert.throws(() => showCards(s, r.secret, 4), (e: GameError) => e.code === 'no_cards')
 })
+
+// ─── hand records for replays ──────────────────────────────────────────────
+
+test('a finished hand is recorded with players, cards, actions and results', () => {
+  let r = startGame(table(['A', 'B', 'C']), { deck: [], hands: {} }, ctx())
+  r.secret = { ...rig(r.secret, { 0: ['As', 'Ad'], 1: ['Ks', 'Kd'], 2: ['7c', '2d'] }, ['Ah', '9c', '5h', '3s', 'Jd']), current: r.secret.current }
+  r = play(r, 0, { type: 'raise', amount: 30 })
+  r = play(r, 1, { type: 'call' })
+  r = play(r, 2, { type: 'fold' })
+  for (let k = 0; k < 6; k++) r = play(r, r.state.toAct!, { type: 'check' })
+  const h = r.secret.lastHand!
+  assert.equal(h.handNo, 1)
+  assert.deepEqual(h.players.map(p => [p.seat, p.name, p.stack]), [[0, 'A', 1000], [1, 'B', 1000], [2, 'C', 1000]])
+  assert.deepEqual(h.cards[0], ['As', 'Ad'])
+  assert.deepEqual(h.board, ['Ah', '9c', '5h', '3s', 'Jd'])
+  assert.equal(h.showdown, true)
+  assert.deepEqual(h.revealed.sort(), [0, 1])
+  assert.deepEqual(h.net, { 0: 40, 1: -30, 2: -10 })
+  const kinds = h.actions.map(a => a.kind)
+  assert.deepEqual(kinds.slice(0, 5), ['blind', 'blind', 'raise', 'call', 'fold'])
+  assert.equal(kinds.filter(k => k === 'street').length, 3)
+  assert.ok(kinds.includes('win'))
+  assert.equal(Object.values(h.net).reduce((a, b) => a + b, 0), 0)
+})
+
+test('the record of a hand won without showdown keeps hole cards private by default', () => {
+  let r = startGame(table(['A', 'B', 'C']), { deck: [], hands: {} }, ctx())
+  r = play(r, 0, { type: 'fold' })
+  r = play(r, 1, { type: 'fold' })
+  const h = r.secret.lastHand!
+  assert.equal(h.showdown, false)
+  assert.deepEqual(h.revealed, [])
+  assert.equal(Object.keys(h.cards).length, 3, 'stored server-side for each player')
+})
