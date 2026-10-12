@@ -9,7 +9,10 @@ export const metadata: Metadata = {
     'პოკერი მეგობრებთან', 'ონლაინ პოკერი მეგობრებთან', 'პოკერი ონლაინ უფასოდ', 'პოკერის თამაში',
     'ჰოლდემი', 'texas holdem', 'poker with friends', 'home game', 'პოკერის ფორუმი', 'pokerforum.ge',
   ],
-  alternates: { canonical: '/home-games' },
+  alternates: {
+    canonical: '/home-games',
+    languages: { ka: '/home-games', en: '/en/play-poker-with-friends', 'x-default': '/home-games' },
+  },
   openGraph: {
     title: 'პოკერი მეგობრებთან — pokerforum.ge',
     description: 'პრივატული პოკერის მაგიდა მეგობრებისთვის. უფასოდ, სათამაშო ჩიპებით, პირდაპირ ბრაუზერში.',
