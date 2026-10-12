@@ -377,8 +377,8 @@ export default function HomeGameTablePage() {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div className="min-w-0 flex-1">
           <Link href="/home-games" className="text-xs text-gray-500 hover:text-brand-600">{t.hgBackToLobby}</Link>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">🃏 {view.name}</h1>
           <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -393,7 +393,9 @@ export default function HomeGameTablePage() {
             {' · '}<span className="text-amber-700 dark:text-amber-400">🪙 {t.hgPlayChips}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* Right side: display options, and the invite link right under them */}
+        <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 sm:justify-end">
           <button onClick={toggleFourColor} title={t.hg4Color}
             className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold ${fourColor ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>
             <span className={fourColor ? '' : 'text-gray-900 dark:text-gray-100'}>♠</span>
@@ -418,6 +420,7 @@ export default function HomeGameTablePage() {
             <button onClick={copyInvite} className="text-xs font-semibold text-brand-600 flex-shrink-0">{copied ? t.hgCopied : t.hgCopy}</button>
           </div>
         )}
+        </div>
       </div>
 
       {view.closed && (
