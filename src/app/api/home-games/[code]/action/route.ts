@@ -6,6 +6,7 @@ import {
 import { getViewer, loadTable, mutateTable, viewFor } from '@/lib/poker/server'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
 
 const PLAYER_ACTIONS = ['fold', 'check', 'call', 'raise'] as const
 // Any seated player may deal the first hand; pausing stays with the host.
