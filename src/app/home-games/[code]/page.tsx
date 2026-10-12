@@ -10,6 +10,7 @@ import type { GameState, LogEntry, Player } from '@/lib/poker/engine'
 import { tournamentElapsed } from '@/lib/poker/engine'
 import { handCategory } from '@/lib/poker/evaluate'
 import PlayingCard from '@/components/poker/PlayingCard'
+import HandReplayer from '@/components/poker/HandReplayer'
 import PokerAvatar from '@/components/PokerAvatar'
 
 type T = ReturnType<typeof useApp>['t']
@@ -137,6 +138,7 @@ export default function HomeGameTablePage() {
   const [felt, setFelt] = useState<Felt>('green')
   const [chatText, setChatText] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [showReplays, setShowReplays] = useState(false)
   const [settingsForm, setSettingsForm] = useState({ smallBlind: '', bigBlind: '', turnSeconds: '' })
   const chatEnd = useRef<HTMLDivElement>(null)
   const wasMyTurn = useRef(false)
@@ -170,6 +172,9 @@ export default function HomeGameTablePage() {
       load()
     }
   }, [code, apply, load, t])
+
+  const describe = useCallback((e: LogEntry) => logLine(e, t), [t])
+  const closeReplays = useCallback(() => setShowReplays(false), [])
 
   // initial load + auth state
   useEffect(() => {
@@ -730,6 +735,10 @@ export default function HomeGameTablePage() {
             </div>
           ) : tab === 'log' ? (
             <div className="max-h-[420px] overflow-y-auto px-4 py-3 space-y-1 text-xs">
+              <button onClick={() => setShowReplays(true)}
+                className="w-full mb-2 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold">
+                🎬 {t.hgPrevHands}
+              </button>
               {s.log.slice().reverse().map((e, i) => (
                 <div key={i} className={e.kind === 'win' ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : e.kind === 'street' ? 'text-gray-400 pt-1' : 'text-gray-700 dark:text-gray-300'}>
                   {logLine(e, t)}
@@ -805,6 +814,10 @@ export default function HomeGameTablePage() {
           )}
         </div>
       </div>
+
+      {showReplays && (
+        <HandReplayer code={view.code} fourColor={fourColor} describe={describe} onClose={closeReplays} />
+      )}
 
       {toast && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm shadow-xl">{toast}</div>
