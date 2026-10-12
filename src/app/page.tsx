@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
-import allTournaments, { trField } from '@/data/tournaments'
+import { flagUrl, trField } from '@/data/tournaments'
+import { useUpcomingTournaments } from '@/lib/useUpcomingTournaments'
 import { catName, catDesc, formatDate } from '@/lib/i18n'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -19,6 +20,7 @@ type OnlineUser = { id: string; username: string; avatar: string | null; is_admi
 
 export default function HomePage() {
   const { t, lang } = useApp()
+  const upcoming = useUpcomingTournaments()
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
@@ -252,7 +254,8 @@ export default function HomePage() {
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
             </div>
-            {allTournaments.slice(0, 4).map(tr => {
+            {upcoming.length === 0 && <div className="px-5 py-4 text-xs text-gray-400">{t.noTournaments}</div>}
+            {upcoming.slice(0, 4).map(tr => {
               const seriesColors: Record<string, string> = {
                 EPT: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
                 WPT: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
@@ -262,13 +265,16 @@ export default function HomePage() {
                 Merit: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
                 APT: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
                 Local: 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400',
+                PokerStars: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400',
+                Triton: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400',
               }
               const badge = seriesColors[tr.series] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
               return (
                 <div key={tr.id} className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge}`}>{tr.series === 'Local' ? t.trLocal : tr.series}</span>
-                    <span className="text-xs">{tr.flag}</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={flagUrl(tr)} width={16} height={11} alt={tr.country.toUpperCase()} className="inline-block rounded-[2px]" />
                   </div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{tr.name}</div>
                   <div className="text-xs text-gray-400 mt-0.5 truncate">{trField(tr, 'location', lang)}</div>

@@ -1,10 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import tournaments, { type Tournament, trField } from '@/data/tournaments'
+import { type Tournament, flagUrl, trField } from '@/data/tournaments'
+import { useUpcomingTournaments } from '@/lib/useUpcomingTournaments'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
-
-const SERIES = ['All', 'EPT', 'WPT', 'WSOP Europe', 'WSOP Circuit', 'RPT', 'Merit', 'APT', 'Local']
 
 function seriesColor(series: string) {
   const map: Record<string, string> = {
@@ -16,6 +15,8 @@ function seriesColor(series: string) {
     Merit: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
     APT: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
     Local: 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400',
+    PokerStars: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400',
+    Triton: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400',
   }
   return map[series] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
 }
@@ -38,7 +39,8 @@ function TournamentCard({ t }: { t: Tournament }) {
           </div>
           <h3 className="font-bold text-gray-900 dark:text-white text-base leading-snug">{t.name}</h3>
         </div>
-        <span className="text-2xl flex-shrink-0">{t.flag}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={flagUrl(t)} width={28} height={20} alt={t.country.toUpperCase()} className="flex-shrink-0 rounded shadow-sm mt-1" />
       </div>
 
       <div className="space-y-1.5 mb-4">
@@ -207,7 +209,8 @@ export default function TournamentsPage() {
     }).catch(e => console.warn('[tournaments] admin check failed:', e))
   }, [])
 
-  const list: Tournament[] = Array.isArray(tournaments) ? tournaments : []
+  const list: Tournament[] = useUpcomingTournaments()
+  const SERIES = ['All', ...Array.from(new Set(list.map(t => t.series)))]
 
   const filtered = list.filter(t => {
     const matchSeries = activeSeries === 'All' || t.series === activeSeries

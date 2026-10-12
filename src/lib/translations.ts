@@ -403,7 +403,7 @@ export const translations = {
     // tournaments
     trTitle: 'ოფლაინ პოკერის სერიები',
     trSubtitle: 'საქართველოს სიახლოვეს · 2–4 საათის ფრენით',
-    trIntro: 'EPT, WPT, WSOP Europe და სხვა — ტურნირები, სადაც თბილისიდან მარტივად ჩახვალ: თურქეთი 🇹🇷, საბერძნეთი 🇬🇷, ჩეხეთი 🇨🇿, ავსტრია 🇦🇹, არაბთა გაერთიანებული საამიროები 🇦🇪, რუმინეთი 🇷🇴, ბულგარეთი 🇧🇬, კვიპროსი 🇨🇾 და ადგილობრივი ქართული ტურნირები 🇬🇪.',
+    trIntro: 'EPT, WPT, Triton და სხვა — ტურნირები, სადაც საქართველოდან მარტივად ჩახვალ. თარიღები ოფიციალური განცხადებებიდანაა, დასრულებული ტურნირები კი სიიდან ავტომატურად ქრება.',
     trSubmitBtn: '+ ტურნირის დამატება',
     trSearch: 'მოძებნე ტურნირი ან ადგილი…',
     trAll: 'ყველა',
@@ -870,7 +870,7 @@ export const translations = {
     // tournaments
     trTitle: 'Offline Poker Series',
     trSubtitle: 'Near Georgia · Within 2–4 hours flight',
-    trIntro: 'EPT, WPT, WSOP Europe and more — tournaments accessible from Tbilisi. Includes Turkey 🇹🇷, Greece 🇬🇷, Czech Republic 🇨🇿, Austria 🇦🇹, UAE 🇦🇪, Romania 🇷🇴, Bulgaria 🇧🇬, Cyprus 🇨🇾 and local Georgia 🇬🇪 events.',
+    trIntro: 'EPT, WPT, Triton and more — tournaments within easy reach of Georgia. Dates come from official announcements, and finished events drop off the list automatically.',
     trSubmitBtn: '+ Submit a tournament',
     trSearch: 'Search tournaments or locations…',
     trAll: 'All',
