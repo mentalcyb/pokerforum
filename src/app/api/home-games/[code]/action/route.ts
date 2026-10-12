@@ -34,10 +34,12 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       if (row.host_id !== viewer!.id) return err('host_only', 403)
       if (row.closed) return err('table_closed')
       if (row.state.phase === 'playing') return err('hand_in_progress')
+      // A running tournament keeps its blind structure; only the turn timer can change.
+      const lockBlinds = row.config.mode === 'tournament' && row.state.started
       const cfg: TableConfig = {
         ...row.config,
-        smallBlind: Number(body.smallBlind ?? row.config.smallBlind),
-        bigBlind: Number(body.bigBlind ?? row.config.bigBlind),
+        smallBlind: lockBlinds ? row.config.smallBlind : Number(body.smallBlind ?? row.config.smallBlind),
+        bigBlind: lockBlinds ? row.config.bigBlind : Number(body.bigBlind ?? row.config.bigBlind),
         turnSeconds: Number(body.turnSeconds ?? row.config.turnSeconds),
       }
       const invalid = validateConfig(cfg)
@@ -99,9 +101,9 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
           if (mySeat < 0 && !isHost) throw new GameError('not_seated')
           return { state: addChat(state, { userId: viewer!.id, name: viewer!.name }, String(body.text ?? ''), ctx.now) }
         case 'pause':
-          return { state: setPaused(state, true) }
+          return { state: setPaused(state, true, ctx.now) }
         case 'resume':
-          return { state: setPaused(state, false) }
+          return { state: setPaused(state, false, ctx.now) }
         default:
           if ((PLAYER_ACTIONS as readonly string[]).includes(action)) {
             needSeat()

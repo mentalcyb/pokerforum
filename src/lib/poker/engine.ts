@@ -23,6 +23,36 @@ export interface TableConfig {
   startingStack: number
   maxSeats: number
   turnSeconds: number
+  /** 'cash' (default): rebuys, fixed blinds. 'tournament': Sit & Go with rising blinds. */
+  mode?: 'cash' | 'tournament'
+  /** tournament only: minutes per blind level */
+  levelMinutes?: number
+}
+
+export interface BlindLevel {
+  sb: number
+  bb: number
+}
+
+export interface Placement {
+  userId: string
+  name: string
+  place: number
+}
+
+export interface TournamentState {
+  levels: BlindLevel[]
+  /** current level index (updated when each hand starts) */
+  level: number
+  levelMinutes: number
+  startedAt: number | null
+  /** while paused the level clock stands still */
+  pausedAt: number | null
+  pausedMs: number
+  finished: boolean
+  entrants: number
+  /** finishing positions, best last as they are decided (1st place is added at the end) */
+  places: Placement[]
 }
 
 export interface Player {
@@ -50,6 +80,7 @@ export interface Player {
 export type LogKind =
   | 'blind' | 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin'
   | 'street' | 'win' | 'return' | 'join' | 'leave' | 'rebuy' | 'timeout' | 'sitout' | 'sitin' | 'kick'
+  | 'level' | 'out' | 'champion'
 
 export interface LogEntry {
   kind: LogKind
@@ -61,6 +92,9 @@ export interface LogEntry {
   cards?: Card[]
   /** hand category index (see HAND_CATEGORIES) for showdown wins */
   hand?: number
+  /** tournament finishing place, or blind level number for 'level' entries */
+  place?: number
+  blinds?: BlindLevel
 }
 
 export interface PotResult {
@@ -111,6 +145,10 @@ export interface GameState {
   chat?: ChatMessage[]
   /** users the host removed; they can't sit at this table again */
   kicked?: string[]
+  /** blinds of the current/last hand (cash: from the config; tournament: from the level) */
+  blinds?: BlindLevel
+  /** present only for tournament tables */
+  tournament?: TournamentState
 }
 
 export interface ChatMessage {
@@ -179,9 +217,16 @@ function nextSeat(s: GameState, from: number, pred: (p: Player, i: number) => bo
   return null
 }
 
-function isEligible(p: Player): boolean {
-  return !p.sittingOut && !p.leaving && p.stack > 0
+/**
+ * Dealt into the next hand? In tournaments players who sit out are still dealt in
+ * (and fold automatically), so they blind away like in a real tournament.
+ */
+function isEligible(p: Player, s: GameState): boolean {
+  if (p.leaving || p.stack <= 0) return false
+  return s.tournament ? true : !p.sittingOut
 }
+
+const tournamentRunning = (s: GameState) => !!s.tournament && s.started && !s.tournament.finished
 
 const isLive = (p: Player) => p.inHand && !p.folded
 const canAct = (p: Player) => p.inHand && !p.folded && !p.allIn
@@ -205,7 +250,7 @@ function cashOut(s: GameState, seat: number) {
 }
 
 export function eligibleCount(s: GameState): number {
-  return s.seats.filter((p): p is Player => !!p && isEligible(p)).length
+  return s.seats.filter((p): p is Player => !!p && isEligible(p, s)).length
 }
 
 export function seatOf(s: GameState, userId: string): number {
@@ -235,6 +280,83 @@ export function initialState(cfg: TableConfig): GameState {
     ledger: {},
     chat: [],
     kicked: [],
+    blinds: { sb: cfg.smallBlind, bb: cfg.bigBlind },
+    tournament: cfg.mode === 'tournament'
+      ? {
+          levels: blindStructure(cfg.bigBlind),
+          level: 0,
+          levelMinutes: cfg.levelMinutes ?? 10,
+          startedAt: null,
+          pausedAt: null,
+          pausedMs: 0,
+          finished: false,
+          entrants: 0,
+          places: [],
+        }
+      : undefined,
+  }
+}
+
+// ─── tournament structure ───────────────────────────────────────────────────
+
+const LEVEL_MULTIPLIERS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500]
+
+/** Round to a "chip-friendly" number: 2 significant digits, multiples of 5 from 20 up. */
+function niceBlind(x: number): number {
+  if (x < 20) return Math.max(2, Math.round(x / 2) * 2)
+  const magnitude = Math.pow(10, Math.floor(Math.log10(x)) - 1)
+  let v = Math.round(x / magnitude) * magnitude
+  if (v >= 20) v = Math.round(v / 10) * 10 || v
+  return v
+}
+
+/** Standard Sit & Go blind schedule starting from the given big blind. */
+export function blindStructure(startBB: number): BlindLevel[] {
+  const levels: BlindLevel[] = []
+  for (const m of LEVEL_MULTIPLIERS) {
+    const bb = m === 1 ? startBB : niceBlind(startBB * m)
+    if (levels.length && bb <= levels[levels.length - 1].bb) continue
+    levels.push({ sb: Math.max(1, Math.floor(bb / 2)), bb })
+  }
+  return levels
+}
+
+/** Milliseconds of tournament time played (pauses don't count). */
+export function tournamentElapsed(t: TournamentState, now: number): number {
+  if (t.startedAt === null) return 0
+  const pausedNow = t.pausedAt !== null ? now - t.pausedAt : 0
+  return Math.max(0, now - t.startedAt - t.pausedMs - pausedNow)
+}
+
+export function levelAt(t: TournamentState, now: number): number {
+  const levelMs = t.levelMinutes * 60_000
+  return Math.min(t.levels.length - 1, Math.floor(tournamentElapsed(t, now) / levelMs))
+}
+
+/** Knock out the given seats and record their finishing places (and the champion). */
+function eliminate(s: GameState, seats: { seat: number; chips: number }[]) {
+  const t = s.tournament!
+  if (seats.length === 0) return
+  const out = new Set(seats.map(x => x.seat))
+  const remaining = s.seats.filter((p, i): p is Player => !!p && !out.has(i)).length
+  // more chips at the start of the hand = better finish
+  const ordered = seats.slice().sort((a, b) => b.chips - a.chips)
+  ordered.forEach((x, k) => {
+    const p = s.seats[x.seat]!
+    const place = remaining + 1 + k
+    t.places.push({ userId: p.userId, name: p.name, place })
+    log(s, { kind: 'out', seat: x.seat, name: p.name, place })
+    s.seats[x.seat] = null
+  })
+  const left = s.seats.map((p, i) => ({ p, i })).filter(x => !!x.p)
+  if (left.length <= 1) {
+    t.finished = true
+    s.started = false
+    const champ = left[0]
+    if (champ) {
+      t.places.push({ userId: champ.p!.userId, name: champ.p!.name, place: 1 })
+      log(s, { kind: 'champion', seat: champ.i, name: champ.p!.name, place: 1 })
+    }
   }
 }
 
@@ -246,6 +368,11 @@ export function validateConfig(cfg: TableConfig): string | null {
   if (cfg.startingStack < cfg.bigBlind * 10 || cfg.startingStack > 10_000_000) return 'invalid_stack'
   if (cfg.maxSeats < 2 || cfg.maxSeats > 9) return 'invalid_seats'
   if (cfg.turnSeconds < 10 || cfg.turnSeconds > 120) return 'invalid_timer'
+  if (cfg.mode !== undefined && cfg.mode !== 'cash' && cfg.mode !== 'tournament') return 'invalid_config'
+  if (cfg.mode === 'tournament') {
+    const m = cfg.levelMinutes
+    if (!Number.isInteger(m) || m! < 1 || m! > 60) return 'invalid_level_time'
+  }
   return null
 }
 
@@ -262,6 +389,7 @@ export function sit(
   if (s.seats[seat]) throw new GameError('seat_taken')
   if (seatOf(s, user.userId) >= 0) throw new GameError('already_seated')
   if (s.kicked?.includes(user.userId)) throw new GameError('kicked')
+  if (tournamentRunning(s)) throw new GameError('tournament_running')
   s.seats[seat] = {
     userId: user.userId,
     name: user.name,
@@ -289,6 +417,7 @@ export function rebuy(state: GameState, cfg: TableConfig, seat: number): GameSta
   const s = clone(state)
   const p = s.seats[seat]
   if (!p) throw new GameError('not_seated')
+  if (s.tournament) throw new GameError('no_rebuy')
   if (p.stack > 0) throw new GameError('still_has_chips')
   if (s.phase === 'playing' && isLive(p)) throw new GameError('in_hand')
   p.stack = cfg.startingStack
@@ -332,6 +461,8 @@ export function leave(state: GameState, secret: Secret, ctx: Ctx, seat: number):
   if (!q) return { state: s, secret: sec } // already removed at hand end
   if (s.phase === 'playing' && q.inHand) {
     q.leaving = true // chips are settled when the hand ends
+  } else if (tournamentRunning(s)) {
+    eliminate(s, [{ seat, chips: -1 }]) // leaving a running tournament forfeits
   } else {
     cashOut(s, seat)
   }
@@ -341,16 +472,47 @@ export function leave(state: GameState, secret: Secret, ctx: Ctx, seat: number):
 // ─── host controls ──────────────────────────────────────────────────────────
 
 export function startGame(state: GameState, secret: Secret, ctx: Ctx): Result {
-  if (eligibleCount(state) < 2) throw new GameError('not_enough_players')
   const s = clone(state)
+  const t = s.tournament
+  if (t && (!s.started || t.finished)) {
+    // (re)start a tournament: everyone seated gets a fresh starting stack
+    for (const p of s.seats) {
+      if (!p) continue
+      p.stack = ctx.cfg.startingStack
+      p.sittingOut = false
+      p.missedTurns = 0
+    }
+    if (eligibleCount(s) < 2) throw new GameError('not_enough_players')
+    t.levels = blindStructure(ctx.cfg.bigBlind)
+    t.levelMinutes = ctx.cfg.levelMinutes ?? t.levelMinutes
+    t.level = 0
+    t.startedAt = ctx.now
+    t.pausedAt = null
+    t.pausedMs = 0
+    t.finished = false
+    t.places = []
+    t.entrants = eligibleCount(s)
+    s.button = -1
+    s.handNo = 0
+    s.started = true
+    s.paused = false
+    log(s, { kind: 'level', place: 1, blinds: t.levels[0] })
+    return startHand(s, secret, ctx)
+  }
+  if (eligibleCount(s) < 2) throw new GameError('not_enough_players')
   s.started = true
   s.paused = false
   if (s.phase === 'playing') return { state: s, secret }
   return startHand(s, secret, ctx)
 }
 
-export function setPaused(state: GameState, paused: boolean): GameState {
+export function setPaused(state: GameState, paused: boolean, now: number = Date.now()): GameState {
   const s = clone(state)
+  const t = s.tournament
+  if (t && t.startedAt !== null && !t.finished) {
+    if (paused && t.pausedAt === null) t.pausedAt = now
+    if (!paused && t.pausedAt !== null) { t.pausedMs += now - t.pausedAt; t.pausedAt = null }
+  }
   s.paused = paused
   return s
 }
@@ -362,7 +524,11 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
   const s = clone(state)
 
   // players who left during the last hand go now
-  s.seats.forEach((p, i) => { if (p?.leaving) cashOut(s, i) })
+  if (tournamentRunning(s)) {
+    eliminate(s, s.seats.map((p, i) => ({ p, seat: i })).filter(x => x.p?.leaving).map(x => ({ seat: x.seat, chips: -1 })))
+  } else {
+    s.seats.forEach((p, i) => { if (p?.leaving) cashOut(s, i) })
+  }
 
   for (const p of s.seats) {
     if (!p) continue
@@ -379,15 +545,28 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
   s.deadline = null
   s.nextHandAt = null
   s.currentBet = 0
-  s.minRaise = cfg.bigBlind
 
-  if (s.paused || eligibleCount(s) < 2) {
+  // Blinds for this hand: fixed at a cash table, by the level clock in a tournament.
+  let blinds: BlindLevel = { sb: cfg.smallBlind, bb: cfg.bigBlind }
+  const t = s.tournament
+  if (t && t.startedAt !== null) {
+    const level = levelAt(t, now)
+    if (level !== t.level) {
+      t.level = level
+      log(s, { kind: 'level', place: level + 1, blinds: t.levels[level] })
+    }
+    blinds = t.levels[t.level]
+  }
+  s.blinds = blinds
+  s.minRaise = blinds.bb
+
+  if (s.paused || eligibleCount(s) < 2 || t?.finished) {
     s.phase = 'waiting'
     s.street = null
     return { state: s, secret: emptySecret() }
   }
 
-  for (const p of s.seats) if (p) p.inHand = isEligible(p)
+  for (const p of s.seats) if (p) p.inHand = isEligible(p, s)
   const dealt = s.seats.filter((p): p is Player => !!p && p.inHand).length
 
   s.handNo += 1
@@ -399,10 +578,10 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
   // Heads-up: the button posts the small blind and acts first before the flop.
   const sb = dealt === 2 ? s.button : nextSeat(s, s.button, p => p.inHand)!
   const bb = nextSeat(s, sb, p => p.inHand)!
-  log(s, { kind: 'blind', seat: sb, name: s.seats[sb]!.name, amount: put(s.seats[sb]!, cfg.smallBlind) })
-  log(s, { kind: 'blind', seat: bb, name: s.seats[bb]!.name, amount: put(s.seats[bb]!, cfg.bigBlind) })
-  s.currentBet = cfg.bigBlind
-  s.minRaise = cfg.bigBlind
+  log(s, { kind: 'blind', seat: sb, name: s.seats[sb]!.name, amount: put(s.seats[sb]!, blinds.sb) })
+  log(s, { kind: 'blind', seat: bb, name: s.seats[bb]!.name, amount: put(s.seats[bb]!, blinds.bb) })
+  s.currentBet = blinds.bb
+  s.minRaise = blinds.bb
 
   // Deal two cards to each player, one at a time, starting left of the button.
   const deck = shuffle(newDeck(), randInt)
@@ -482,7 +661,7 @@ export function tick(state: GameState, secret: Secret, ctx: Ctx): Result | null 
 
   const turnPlayer = state.phase === 'playing' && state.toAct !== null ? state.seats[state.toAct] : null
   // Players already sat out for missing turns don't hold up the table again.
-  const autoSkip = !!turnPlayer && turnPlayer.missedTurns >= MAX_MISSED_TURNS
+  const autoSkip = !!turnPlayer && (turnPlayer.missedTurns >= MAX_MISSED_TURNS || turnPlayer.sittingOut)
   if (turnPlayer && state.deadline !== null && (now >= state.deadline || autoSkip)) {
     const seat = state.toAct!
     const s = clone(state)
@@ -509,9 +688,20 @@ export function tick(state: GameState, secret: Secret, ctx: Ctx): Result | null 
   return null
 }
 
+/** Start a player's turn. Players who are sitting out check or fold straight away. */
+function giveTurn(s: GameState, sec: Secret, ctx: Ctx, seat: number): Result {
+  s.toAct = seat
+  s.deadline = ctx.now + ctx.cfg.turnSeconds * 1000
+  const p = s.seats[seat]!
+  if (p.sittingOut) {
+    return act(s, sec, ctx, seat, p.bet >= s.currentBet ? { type: 'check' } : { type: 'fold' }, true)
+  }
+  return { state: s, secret: sec }
+}
+
 /** After an action: pick the next player, move to the next street, or finish the hand. */
 function advance(s: GameState, sec: Secret, ctx: Ctx, fromSeat: number): Result {
-  const { cfg, now } = ctx
+  const { cfg } = ctx
   const players = s.seats.filter((p): p is Player => !!p)
   const live = players.filter(isLive)
   if (live.length === 1) return endHand(s, sec, ctx, false)
@@ -522,15 +712,13 @@ function advance(s: GameState, sec: Secret, ctx: Ctx, fromSeat: number): Result 
   if (actors.length === 1 && actors[0].bet >= s.currentBet) pending = []
 
   if (pending.length > 0) {
-    s.toAct = nextSeat(s, fromSeat, p => pending.includes(p))
-    s.deadline = now + cfg.turnSeconds * 1000
-    return { state: s, secret: sec }
+    return giveTurn(s, sec, ctx, nextSeat(s, fromSeat, p => pending.includes(p))!)
   }
 
   // Betting round complete
   for (const p of players) { p.bet = 0; p.acted = false }
   s.currentBet = 0
-  s.minRaise = cfg.bigBlind
+  s.minRaise = s.blinds?.bb ?? cfg.bigBlind
   s.toAct = null
   s.deadline = null
 
@@ -549,9 +737,7 @@ function advance(s: GameState, sec: Secret, ctx: Ctx, fromSeat: number): Result 
     }
     log(s, { kind: 'street', street: s.street, cards: s.board.slice() })
     if (!runOut) {
-      s.toAct = nextSeat(s, s.button, canAct)
-      s.deadline = now + cfg.turnSeconds * 1000
-      return { state: s, secret: sec }
+      return giveTurn(s, sec, ctx, nextSeat(s, s.button, canAct)!)
     }
   }
   return endHand(s, sec, ctx, true)
@@ -637,6 +823,13 @@ function endHand(s: GameState, sec: Secret, ctx: Ctx, showdown: boolean): Result
   }
 
   // all chips are now back in stacks
+  // Tournament: players who lost all their chips (or left) are out
+  if (tournamentRunning(s)) {
+    eliminate(s, players
+      .filter(x => s.seats[x.seat] && (x.p.stack === 0 || x.p.leaving))
+      .map(x => ({ seat: x.seat, chips: x.p.leaving ? -1 : x.p.committed })))
+  }
+
   for (const x of players) { x.p.bet = 0; x.p.committed = 0; x.p.acted = false }
   s.phase = 'handOver'
   s.toAct = null

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   act, Ctx, GameError, GameState, initialState, leave, rebuy, Secret, sit, startGame, startHand,
-  TableConfig, tick, Action, kick, addChat,
+  TableConfig, tick, Action, kick, addChat, blindStructure, setPaused, setSittingOut,
 } from '../engine'
 import { bestScore, compareScores, score5, handCategory } from '../evaluate'
 
@@ -389,4 +389,142 @@ test('hand category works from two to seven cards', () => {
   assert.equal(handCategory(['9s', '8d', '7h', '6c', '5s', 'Ks', '2s']), 4)
   assert.equal(handCategory(['As', 'Ks', '7s', '6s', '2s', 'Kd', 'Kh']), 5)
   assert.equal(handCategory(['As']), null)
+})
+
+// ─── tournament mode ───────────────────────────────────────────────────────
+
+const tcfg: TableConfig = { smallBlind: 10, bigBlind: 20, startingStack: 1500, maxSeats: 6, turnSeconds: 30, mode: 'tournament', levelMinutes: 5 }
+const LEVEL = 5 * 60_000
+
+function tctx(now: number, randInt?: (n: number) => number): Ctx {
+  return { ...ctx({ now }), cfg: tcfg, ...(randInt ? { randInt } : {}) }
+}
+
+function ttable(names: string[]): GameState {
+  return table(names, undefined, tcfg)
+}
+
+test('blind structure starts at the configured big blind and only goes up', () => {
+  const levels = blindStructure(20)
+  assert.deepEqual(levels[0], { sb: 10, bb: 20 })
+  assert.deepEqual(levels.slice(0, 5).map(l => l.bb), [20, 30, 40, 60, 80])
+  for (let i = 1; i < levels.length; i++) assert.ok(levels[i].bb > levels[i - 1].bb)
+  for (const l of levels) assert.equal(l.sb, Math.floor(l.bb / 2))
+})
+
+test('tournament blinds rise with the level clock, and pausing stops the clock', () => {
+  const T = 5_000_000
+  let r = startGame(ttable(['A', 'B', 'C']), { deck: [], hands: {} }, tctx(T))
+  assert.equal(r.state.blinds!.bb, 20)
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(T))
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(T))
+  // pause for 10 minutes in the middle of level 1
+  let s = setPaused(r.state, true, T + 60_000)
+  s = setPaused(s, false, T + 60_000 + 10 * 60_000)
+  r = startHand(s, r.secret, tctx(T + 10 * 60_000 + LEVEL - 1)) // only ~4:59 of play counted
+  assert.equal(r.state.blinds!.bb, 20)
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(T))
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(T))
+  r = startHand(r.state, r.secret, tctx(T + 10 * 60_000 + LEVEL + 1))
+  assert.equal(r.state.tournament!.level, 1)
+  assert.equal(r.state.blinds!.bb, 30)
+  assert.ok(r.state.log.some(e => e.kind === 'level' && e.place === 2))
+})
+
+test('heads-up all-in decides the tournament: places, champion, no more hands', () => {
+  let r = startGame(ttable(['A', 'B']), { deck: [], hands: {} }, tctx(1000))
+  const btn = r.state.button, other = 1 - btn
+  r.secret = rig(r.secret, { [btn]: ['As', 'Ad'], [other]: ['7c', '2d'] }, ['Ah', 'Kd', '9s', '4c', '3h'])
+  r = play(r, btn, { type: 'raise', amount: 1500 }, tctx(1000))
+  r = play(r, other, { type: 'call' }, tctx(1000))
+  const t = r.state.tournament!
+  assert.equal(t.finished, true)
+  assert.deepEqual(t.places.map(p => [p.name, p.place]).sort(), [[r.state.seats[btn]!.name, 1], [btn === 0 ? 'B' : 'A', 2]].sort())
+  assert.equal(r.state.seats[other], null, 'the loser leaves the table')
+  assert.equal(r.state.started, false)
+  const next = tick(r.state, r.secret, tctx(r.state.nextHandAt!))!
+  assert.equal(next.state.phase, 'waiting')
+  assert.throws(() => rebuy(next.state, tcfg, btn), (e: GameError) => e.code === 'no_rebuy')
+})
+
+test('two players busting in the same hand: the bigger stack finishes higher', () => {
+  const s = ttable(['A', 'B', 'C'])
+  s.seats[1]!.stack = 300 // B
+  s.seats[2]!.stack = 600 // C
+  let r = startGame(s, { deck: [], hands: {} }, tctx(1000))
+  // startGame gives everyone a fresh stack, so set the short stacks after it
+  r.state.seats[1]!.stack = 300 - r.state.seats[1]!.bet
+  r.state.seats[2]!.stack = 600 - r.state.seats[2]!.bet
+  r.secret = rig(r.secret, { 0: ['As', 'Ad'], 1: ['7c', '2d'], 2: ['8h', '3c'] }, ['Ah', 'Kd', '9s', '4c', 'Jh'])
+  r = play(r, 0, { type: 'raise', amount: 1500 }, tctx(1000))
+  r = play(r, 1, { type: 'call' }, tctx(1000))
+  r = play(r, 2, { type: 'call' }, tctx(1000))
+  const places = Object.fromEntries(r.state.tournament!.places.map(p => [p.name, p.place]))
+  assert.deepEqual(places, { C: 2, B: 3, A: 1 })
+  assert.equal(r.state.tournament!.finished, true)
+})
+
+test('no late seating while a tournament runs; leaving forfeits', () => {
+  let r = startGame(ttable(['A', 'B', 'C']), { deck: [], hands: {} }, tctx(1000))
+  assert.throws(() => sit(r.state, tcfg, 4, { userId: 'u-D', name: 'D', avatar: null }), (e: GameError) => e.code === 'tournament_running')
+  r = leave(r.state, r.secret, tctx(1000), 2) // C is the big blind, folds and leaves
+  r = play(r, 0, { type: 'fold' }, tctx(1000)) // B wins the blinds; hand ends; C is out
+  const places = r.state.tournament!.places
+  assert.equal(places.length, 1)
+  assert.deepEqual([places[0].name, places[0].place], ['C', 3])
+})
+
+test('players sitting out in a tournament are dealt in and fold automatically', () => {
+  let r = startGame(ttable(['A', 'B', 'C']), { deck: [], hands: {} }, tctx(1000))
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(1000))
+  r = play(r, r.state.toAct!, { type: 'fold' }, tctx(1000))
+  const s = setSittingOut(r.state, 0, true)
+  r = startHand(s, r.secret, tctx(2000))
+  assert.equal(r.state.seats[0]!.inHand, true, 'still dealt in')
+  // A is first to act preflop in 3-handed only if A is UTG; either way A never holds up the table
+  while (r.state.phase === 'playing' && r.state.toAct !== null) {
+    assert.notEqual(r.state.toAct, 0, 'a sitting-out player is never left to act')
+    const p = r.state.seats[r.state.toAct]!
+    r = play(r, r.state.toAct, p.bet < r.state.currentBet ? { type: 'call' } : { type: 'check' }, tctx(2000))
+  }
+})
+
+test('host can start the next tournament after one finishes', () => {
+  let r = startGame(ttable(['A', 'B']), { deck: [], hands: {} }, tctx(1000))
+  const btn = r.state.button, other = 1 - btn
+  r.secret = rig(r.secret, { [btn]: ['As', 'Ad'], [other]: ['7c', '2d'] }, ['Ah', 'Kd', '9s', '4c', '3h'])
+  r = play(r, btn, { type: 'raise', amount: 1500 }, tctx(1000))
+  r = play(r, other, { type: 'call' }, tctx(1000))
+  let s = sit(r.state, tcfg, other, { userId: 'u-Z', name: 'Z', avatar: null })
+  r = startGame(s, r.secret, tctx(9_000_000))
+  assert.equal(r.state.tournament!.finished, false)
+  assert.equal(r.state.tournament!.places.length, 0)
+  assert.equal(r.state.tournament!.entrants, 2)
+  assert.equal(totalChips(r.state), 3000)
+})
+
+test('random tournaments always finish with unique places 1..N', () => {
+  let seed = 3
+  const rnd = (n: number) => { seed = (seed * 48271) % 2147483647; return seed % n }
+  for (let game = 0; game < 30; game++) {
+    const players = 2 + (game % 5)
+    const names = Array.from({ length: players }, (_, k) => `P${k}`)
+    let now = 1_000_000
+    let r = startGame(ttable(names), { deck: [], hands: {} }, tctx(now, rnd))
+    for (let step = 0; step < 20000 && !r.state.tournament!.finished; step++) {
+      now += 20_000 // blinds keep going up, so it always ends
+      const s = r.state
+      const live = s.seats.reduce((sum, p) => sum + (p ? p.stack + p.committed : 0), 0)
+      assert.equal(live, players * 1500, `chips conserved (game ${game})`)
+      if (s.phase !== 'playing') { r = tick(s, r.secret, tctx(Math.max(now, s.nextHandAt ?? now), rnd)) ?? r; continue }
+      const p = s.seats[s.toAct!]!
+      const toCall = s.currentBet - p.bet
+      const opts: Action[] = toCall > 0 ? [{ type: 'fold' }, { type: 'call' }, { type: 'call' }] : [{ type: 'check' }]
+      if (!p.acted && p.stack > toCall) opts.push({ type: 'raise', amount: p.bet + p.stack })
+      r = play(r, s.toAct!, opts[rnd(opts.length)], tctx(now, rnd))
+    }
+    const t = r.state.tournament!
+    assert.equal(t.finished, true, `game ${game} finished`)
+    assert.deepEqual(t.places.map(p => p.place).sort((a, b) => a - b), Array.from({ length: players }, (_, k) => k + 1))
+  }
 })

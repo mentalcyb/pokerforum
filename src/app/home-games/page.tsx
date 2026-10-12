@@ -10,7 +10,7 @@ type TableSummary = {
   code: string
   name: string
   isHost: boolean
-  config: { smallBlind: number; bigBlind: number; startingStack: number; maxSeats: number; turnSeconds: number }
+  config: { smallBlind: number; bigBlind: number; startingStack: number; maxSeats: number; turnSeconds: number; mode?: 'cash' | 'tournament'; levelMinutes?: number }
   players: number
   phase: string
 }
@@ -21,6 +21,7 @@ const BLIND_OPTIONS = [
 const STACK_IN_BB = [50, 100, 200] as const
 const SEAT_OPTIONS = [2, 4, 6, 8, 9] as const
 const TIMER_OPTIONS = [15, 30, 45, 60] as const
+const LEVEL_OPTIONS = [3, 5, 10, 15, 20] as const
 
 export default function HomeGamesLobby() {
   const { t } = useApp()
@@ -32,6 +33,8 @@ export default function HomeGamesLobby() {
   const [stackBB, setStackBB] = useState<number>(100)
   const [seats, setSeats] = useState<number>(6)
   const [timer, setTimer] = useState<number>(30)
+  const [mode, setMode] = useState<'cash' | 'tournament'>('cash')
+  const [levelMinutes, setLevelMinutes] = useState<number>(10)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,7 +58,7 @@ export default function HomeGamesLobby() {
     const [sb, bb] = BLIND_OPTIONS[blinds]
     const res = await homeGamesFetch<{ code: string }>('', {
       method: 'POST',
-      body: { name, smallBlind: sb, bigBlind: bb, startingStack: bb * stackBB, maxSeats: seats, turnSeconds: timer },
+      body: { name, smallBlind: sb, bigBlind: bb, startingStack: bb * stackBB, maxSeats: seats, turnSeconds: timer, mode, levelMinutes },
     })
     setCreating(false)
     if (!res.ok) { setError(t.hgErrors[res.error] ?? t.loadError); return }
@@ -90,13 +93,25 @@ export default function HomeGamesLobby() {
         <>
           <form onSubmit={create} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-6 space-y-4">
             <h2 className="font-semibold text-gray-900 dark:text-white">{t.hgCreateTitle}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                ['cash', '💵', t.hgModeCash, t.hgModeCashHint],
+                ['tournament', '🏆', t.hgModeTournament, t.hgModeTournamentHint],
+              ] as const).map(([m, icon, title, hint]) => (
+                <button type="button" key={m} onClick={() => setMode(m)}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${mode === m ? 'border-brand-600 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-brand-300'}`}>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{icon} {title}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{hint}</div>
+                </button>
+              ))}
+            </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">{t.hgTableName}</label>
               <input value={name} onChange={e => setName(e.target.value)} maxLength={40} placeholder={t.hgTableNamePlaceholder}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">{t.hgBlinds}</div>
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">{mode === 'tournament' ? t.hgStartingBlinds : t.hgBlinds}</div>
               <div className="flex flex-wrap gap-1.5">
                 {BLIND_OPTIONS.map(([sb, bb], i) => (
                   <button type="button" key={bb} onClick={() => setBlinds(i)} className={chip(blinds === i)}>{sb}/{bb}</button>
@@ -113,6 +128,14 @@ export default function HomeGamesLobby() {
                 ))}
               </div>
             </div>
+            {mode === 'tournament' && (
+              <div>
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">{t.hgLevelLength}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {LEVEL_OPTIONS.map(n => <button type="button" key={n} onClick={() => setLevelMinutes(n)} className={chip(levelMinutes === n)}>{n} {t.hgMinutes}</button>)}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-6">
               <div>
                 <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">{t.hgSeats}</div>
@@ -146,6 +169,7 @@ export default function HomeGamesLobby() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {tb.name}
+                    {tb.config.mode === 'tournament' && <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">🏆 {t.hgTournamentBadge}</span>}
                     {tb.isHost && <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">{t.hgHostBadge}</span>}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">

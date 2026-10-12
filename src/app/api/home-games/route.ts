@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
       startingStack: Number(body.startingStack),
       maxSeats: Number(body.maxSeats),
       turnSeconds: Number(body.turnSeconds),
+      mode: body.mode === 'tournament' ? 'tournament' : 'cash',
+      ...(body.mode === 'tournament' ? { levelMinutes: Number(body.levelMinutes) } : {}),
     }
     const invalid = validateConfig(cfg)
     if (invalid) return err(invalid)
