@@ -22,6 +22,17 @@ export const metadata: Metadata = {
     locale: 'ka_GE',
     type: 'website',
   },
+  // The site has its own dark mode: ask Dark Reader-style extensions not to recolor it
+  // (they turned the poker table black and the cards dark).
+  other: {
+    'darkreader-lock': '',
+  },
+}
+
+// Tells browsers (e.g. Chrome's "auto dark mode for web contents") that the site
+// supports both light and dark itself, so they don't force-invert its colors.
+export const viewport = {
+  colorScheme: 'light dark',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
