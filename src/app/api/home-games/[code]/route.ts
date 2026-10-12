@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getViewer, loadTable, viewFor } from '@/lib/poker/server'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
 
 /** Current table state for the viewer (anyone with the invite link can watch). */
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
