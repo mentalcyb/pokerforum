@@ -12,7 +12,7 @@ import PokerAvatar from '@/components/PokerAvatar'
 
 type T = ReturnType<typeof useApp>['t']
 
-const POLL_REALTIME_MS = 10000
+const POLL_REALTIME_MS = 5000
 const POLL_FALLBACK_MS = 2500
 
 function potTotal(s: GameState) {
@@ -107,6 +107,17 @@ export default function HomeGameTablePage() {
     const id = setInterval(load, realtime ? POLL_REALTIME_MS : POLL_FALLBACK_MS)
     return () => clearInterval(id)
   }, [load, realtime])
+
+  // Background tabs get their timers slowed down: refresh as soon as the player comes back.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [load])
 
   // clock for timers
   useEffect(() => {
@@ -349,6 +360,10 @@ export default function HomeGameTablePage() {
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
+                {!view.isHost && s.phase === 'waiting' && !s.started && (
+                  <button onClick={() => send('start')} disabled={busy || eligibleCount(s) < 2}
+                    className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgStart}</button>
+                )}
                 {view.myCards.length > 0 && me && !me.folded && (
                   <div className="flex gap-1 mr-2">{view.myCards.map(c => <PlayingCard key={c} card={c} size="md" />)}</div>
                 )}
