@@ -5,11 +5,12 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import ImageUploader from '@/components/ImageUploader'
 import ErrorState from '@/components/ErrorState'
+import { catName } from '@/lib/i18n'
 
-type Category = { id: number; name: string }
+type Category = { id: number; name: string; name_en?: string | null }
 
 function NewPostForm() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
@@ -31,7 +32,7 @@ function NewPostForm() {
       const { data: authData } = await supabase.auth.getUser()
       if (!authData.user) { router.push('/auth'); return }
       setUser(authData.user)
-      const { data: cats, error: catsErr } = await supabase.from('categories').select('id, name')
+      const { data: cats, error: catsErr } = await supabase.from('categories').select('*')
       if (catsErr) throw catsErr
       setCategories(cats || [])
     } catch (e) {
@@ -83,7 +84,7 @@ function NewPostForm() {
             <select value={categoryId} onChange={e => setCategoryId(Number(e.target.value))} required
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">{t.selectCategory}</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{catName(c, lang)}</option>)}
             </select>
           </div>
           <div>

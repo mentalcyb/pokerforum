@@ -5,26 +5,28 @@ import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
-import allTournaments from '@/data/tournaments'
+import allTournaments, { trField } from '@/data/tournaments'
+import { catName, catDesc, formatDate } from '@/lib/i18n'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
 }
 
-type Category = { id: number; name: string; description: string; icon: string; post_count: number }
-type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string } }
+type Category = { id: number; name: string; description: string; name_en?: string | null; description_en?: string | null; icon: string; post_count: number }
+type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string; name_en?: string | null } | null }
 type Stats = { members: number; posts: number; online: number }
 type OnlineUser = { id: string; username: string; avatar: string | null; is_admin: boolean }
 
 export default function HomePage() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [now, setNow] = useState(new Date())
+  // null until mounted, so the server-rendered HTML never contains a frozen build-time date
+  const [now, setNow] = useState<Date | null>(null)
   const supabase = createClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const clockRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -50,6 +52,7 @@ export default function HomePage() {
     // Refresh stats every 30 seconds
     intervalRef.current = setInterval(loadStats, 30000)
     // Tick clock every second
+    setNow(new Date())
     clockRef.current = setInterval(() => setNow(new Date()), 1000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -96,7 +99,7 @@ export default function HomePage() {
 
       const { data: ps, error: psErr } = await supabase
         .from('posts')
-        .select('id, title, created_at, reply_count, view_count, profiles(username), categories(name)')
+        .select('id, title, created_at, reply_count, view_count, profiles(username), categories(*)')
         .order('created_at', { ascending: false }).limit(10)
       if (psErr) throw psErr
 
@@ -118,14 +121,10 @@ export default function HomePage() {
     const hh = String(tbilisi.getHours()).padStart(2, '0')
     const mm = String(tbilisi.getMinutes()).padStart(2, '0')
     const ss = String(tbilisi.getSeconds()).padStart(2, '0')
-    const day = tbilisi.getDate()
-    const year = tbilisi.getFullYear()
-    const months = ['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი']
-    const days = ['კვირა','ორშაბათი','სამშაბათი','ოთხშაბათი','ხუთშაბათი','პარასკევი','შაბათი']
     return {
       time: `${hh}:${mm}:${ss}`,
-      date: `${day} ${months[tbilisi.getMonth()]} ${year}`,
-      weekday: days[tbilisi.getDay()],
+      date: formatDate(tbilisi, t),
+      weekday: t.weekdays[tbilisi.getDay()],
     }
   }
 
@@ -185,8 +184,8 @@ export default function HomePage() {
                   {CATEGORY_ICONS[cat.icon] || '♠'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-white text-sm">{cat.name}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{cat.description}</div>
+                  <div className="font-medium text-gray-900 dark:text-white text-sm">{catName(cat, lang)}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{catDesc(cat, lang)}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className="text-sm font-semibold text-gray-900 dark:text-white">{cat.post_count}</div>
@@ -214,7 +213,7 @@ export default function HomePage() {
             ) : posts.map(post => (
               <Link key={post.id} href={`/post/${post.id}`} className="flex items-start gap-3 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-brand-600 font-medium mb-1">{post.categories?.name}</div>
+                  <div className="text-xs text-brand-600 font-medium mb-1">{catName(post.categories, lang)}</div>
                   <div className="font-medium text-gray-900 dark:text-white text-sm leading-snug">{post.title}</div>
                   <div className="text-xs text-gray-400 mt-1">
                     <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} className="hover:text-brand-600 transition-colors">{post.profiles?.username}</Link>
@@ -235,7 +234,7 @@ export default function HomePage() {
 
           {/* Live clock */}
           {(() => {
-            const { time, date, weekday } = getTbilisiTime(now)
+            const { time, date, weekday } = now ? getTbilisiTime(now) : { time: '--:--:--', date: '\u00a0', weekday: '\u00a0' }
             return (
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 px-5 py-4">
                 <div className="flex items-center justify-between mb-2">
@@ -268,13 +267,13 @@ export default function HomePage() {
               return (
                 <div key={tr.id} className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge}`}>{tr.series}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge}`}>{tr.series === 'Local' ? t.trLocal : tr.series}</span>
                     <span className="text-xs">{tr.flag}</span>
                   </div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{tr.name}</div>
-                  <div className="text-xs text-gray-400 mt-0.5 truncate">{tr.location}</div>
+                  <div className="text-xs text-gray-400 mt-0.5 truncate">{trField(tr, 'location', lang)}</div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-400">{tr.dates}</span>
+                    <span className="text-xs text-gray-400">{trField(tr, 'dates', lang)}</span>
                     <span className="text-xs font-semibold text-brand-600">{tr.buyin}</span>
                   </div>
                 </div>

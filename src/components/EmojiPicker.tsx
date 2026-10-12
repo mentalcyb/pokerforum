@@ -1,25 +1,26 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useApp } from '@/contexts/AppContext'
 
 const EMOJI_GROUPS = [
   {
-    label: 'სახეები',
+    labelKey: 'emojiFaces' as const,
     emojis: ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕'],
   },
   {
-    label: 'ხელები',
+    labelKey: 'emojiHands' as const,
     emojis: ['👍','👎','👌','🤌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👋','🤚','🖐️','✋','🖖','🤝','🙏','✍️','💪','🦾','👏','🙌','🤲','🫶','❤️‍🔥'],
   },
   {
-    label: 'გულები',
+    labelKey: 'emojiHearts' as const,
     emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🫀'],
   },
   {
-    label: 'პოკერი',
+    labelKey: 'emojiPoker' as const,
     emojis: ['♠️','♥️','♦️','♣️','🃏','🎰','🎲','🎯','💰','💵','💴','💶','💷','💸','🏆','🥇','🥈','🥉','🎖️','🏅','👑','💎','🤑','🤫','😈','🦊','🐍','🔥','⚡','💥','🎭','🕶️','🥸','🤠','😤','😎'],
   },
   {
-    label: 'სხვა',
+    labelKey: 'emojiOther' as const,
     emojis: ['🚀','⭐','🌟','✨','💫','🎉','🎊','🎈','🎁','🎮','🕹️','🏋️','⚽','🏀','🏈','⚾','🎾','🏐','🎱','🍀','🌹','🌺','🌸','🌻','🌈','🌙','☀️','⛅','🌊','🔥','❄️','💧','🌿','🍃','🍕','🍔','🍟','🌮','🍜','🍣','🍺','🥂','☕','🧃'],
   },
 ]
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export default function EmojiPicker({ onSelect }: Props) {
+  const { t } = useApp()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -52,7 +54,8 @@ export default function EmojiPicker({ onSelect }: Props) {
         type="button"
         onClick={() => setOpen(v => !v)}
         className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-base"
-        title="Emoji"
+        title={t.emoji}
+        aria-label={t.emoji}
       >
         😊
       </button>
@@ -72,7 +75,7 @@ export default function EmojiPicker({ onSelect }: Props) {
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
-                {g.label}
+                {t[g.labelKey]}
               </button>
             ))}
           </div>

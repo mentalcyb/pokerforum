@@ -26,6 +26,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Keep <html lang> in sync so browsers, screen readers and translators know the page language
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
+
   const setLang = (l: Lang) => {
     setLangState(l)
     localStorage.setItem('lang', l)

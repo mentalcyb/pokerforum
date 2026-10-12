@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useApp } from '@/contexts/AppContext'
 
 const SAMPLE_PS = `PokerStars Hand #243000000001: Hold'em No Limit ($0.25/$0.50 USD) - 2024/05/01 20:00:00 ET
 Table 'TableName' 6-max Seat #1 is the button
@@ -48,21 +49,24 @@ const STATUS_STYLES = {
   error: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
 }
 const STATUS_ICON = { ok: '✓', warning: '⚠', error: '✗' }
-const STATUS_LABEL = { ok: 'Good', warning: 'Questionable', error: 'Mistake' }
 
 const LS_KEY = 'hand-analyzer-lang'
 
 export default function HandAnalyzerPage() {
+  const { t, lang: siteLang } = useApp()
+  const STATUS_LABEL = { ok: t.haGood, warning: t.haQuestionable, error: t.haMistake }
   const [handHistory, setHandHistory] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
-  const [lang, setLangState] = useState<'en' | 'ka'>('en')
+  // Language of the AI answer: the user's saved choice, otherwise the site language
+  const [lang, setLangState] = useState<'en' | 'ka'>(siteLang)
 
   useEffect(() => {
     const saved = localStorage.getItem(LS_KEY)
     if (saved === 'ka' || saved === 'en') setLangState(saved)
-  }, [])
+    else setLangState(siteLang)
+  }, [siteLang])
 
   function setLang(l: 'en' | 'ka') {
     setLangState(l)
@@ -70,7 +74,7 @@ export default function HandAnalyzerPage() {
   }
 
   async function analyze() {
-    if (!handHistory.trim()) { setError('Please paste a hand history first.'); return }
+    if (!handHistory.trim()) { setError(t.haErrEmpty); return }
     setLoading(true)
     setError('')
     setAnalysis(null)
@@ -81,20 +85,20 @@ export default function HandAnalyzerPage() {
         body: JSON.stringify({ handHistory, lang }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Analysis failed.'); return }
+      if (!res.ok) { setError(data.error || t.haErrFailed); return }
       setAnalysis(data.analysis)
     } catch {
-      setError('Network error. Please try again.')
+      setError(t.networkError)
     } finally {
       setLoading(false)
     }
   }
 
   const streets: { key: keyof Analysis; label: string }[] = [
-    { key: 'preflop', label: 'Preflop' },
-    { key: 'flop', label: 'Flop' },
-    { key: 'turn', label: 'Turn' },
-    { key: 'river', label: 'River' },
+    { key: 'preflop', label: t.streetPreflop },
+    { key: 'flop', label: t.streetFlop },
+    { key: 'turn', label: t.streetTurn },
+    { key: 'river', label: t.streetRiver },
   ]
 
   return (
@@ -104,31 +108,30 @@ export default function HandAnalyzerPage() {
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl">🤖</div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">AI Hand Analyzer</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">PokerStars &amp; GGPoker formats</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t.haTitle}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t.haFormats}</p>
           </div>
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">
-          Paste your hand history below for a street-by-street breakdown. The AI acts as a discussion
-          starter — bring the analysis to the forum for community debate.
+          {t.haIntro}
         </p>
       </div>
 
       {/* Input */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-5">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Hand History</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.haHandHistory}</label>
           <button
             onClick={() => setHandHistory(SAMPLE_PS)}
             className="text-xs text-brand-600 hover:text-brand-700 font-medium"
           >
-            Load example
+            {t.haLoadExample}
           </button>
         </div>
         <textarea
           value={handHistory}
           onChange={e => setHandHistory(e.target.value)}
-          placeholder="Paste PokerStars or GGPoker hand history here..."
+          placeholder={t.haPlaceholder}
           rows={12}
           className="w-full text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-800 dark:text-gray-200 resize-y focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder-gray-400"
         />
@@ -136,7 +139,7 @@ export default function HandAnalyzerPage() {
 
         {/* Language toggle + Analyze button */}
         <div className="mt-3 flex gap-2">
-          <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0" role="group" aria-label={t.haAnswerLang} title={t.haAnswerLang}>
             <button
               onClick={() => setLang('ka')}
               className={`px-3 py-2.5 text-sm font-medium transition-colors ${
@@ -145,7 +148,7 @@ export default function HandAnalyzerPage() {
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              🇬🇪 Georgian
+              🇬🇪 {t.langGeorgian}
             </button>
             <button
               onClick={() => setLang('en')}
@@ -155,7 +158,7 @@ export default function HandAnalyzerPage() {
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              🇬🇧 English
+              🇬🇧 {t.langEnglish}
             </button>
           </div>
           <button
@@ -169,9 +172,9 @@ export default function HandAnalyzerPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                 </svg>
-                Analyzing…
+                {t.haAnalyzing}
               </span>
-            ) : '🤖 Analyze Hand'}
+            ) : t.haAnalyze}
           </button>
         </div>
       </div>
@@ -181,14 +184,14 @@ export default function HandAnalyzerPage() {
         <div className="space-y-4">
           {/* Summary */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-2">Hand Summary</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-2">{t.haSummary}</h2>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{analysis.summary}</p>
           </div>
 
           {/* Street breakdown */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h2 className="font-semibold text-gray-900 dark:text-white">Street Breakdown</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{t.haBreakdown}</h2>
             </div>
             {streets.map(({ key, label }) => {
               const s = analysis[key] as StreetResult
@@ -216,7 +219,7 @@ export default function HandAnalyzerPage() {
               <div className="flex items-start gap-3">
                 <span className="text-xl flex-shrink-0">🎯</span>
                 <div>
-                  <h3 className="font-semibold text-red-800 dark:text-red-300 mb-1">Key Spot to Improve</h3>
+                  <h3 className="font-semibold text-red-800 dark:text-red-300 mb-1">{t.haKeySpot}</h3>
                   <p className="text-sm text-red-700 dark:text-red-400 leading-relaxed">{analysis.keyMistake}</p>
                 </div>
               </div>
@@ -228,7 +231,7 @@ export default function HandAnalyzerPage() {
             <div className="flex items-start gap-3">
               <span className="text-xl flex-shrink-0">💬</span>
               <div>
-                <h3 className="font-semibold text-brand-800 dark:text-brand-300 mb-1">Discussion Starter</h3>
+                <h3 className="font-semibold text-brand-800 dark:text-brand-300 mb-1">{t.haDiscussion}</h3>
                 <p className="text-sm text-brand-700 dark:text-brand-400 leading-relaxed">{analysis.discussion}</p>
               </div>
             </div>
@@ -240,31 +243,32 @@ export default function HandAnalyzerPage() {
                     const r = analysis[s]
                     if (!r) return null
                     const icon = r.status === 'ok' ? '✓' : r.status === 'warning' ? '⚠' : '✗'
-                    return `${s.toUpperCase()} [${icon}]\n${r.assessment}\n${r.note}`
+                    const label = streets.find(x => x.key === s)?.label ?? s
+                    return `${label.toUpperCase()} [${icon}]\n${r.assessment}\n${r.note}`
                   })
                   .filter(Boolean)
                   .join('\n\n')
 
                 const body =
-                  `📋 HAND SUMMARY\n${analysis.summary}` +
-                  `\n\n🃏 STREET BREAKDOWN\n${streetLines}` +
-                  (analysis.keyMistake ? `\n\n🎯 KEY SPOT\n${analysis.keyMistake}` : '') +
-                  `\n\n💬 DISCUSSION\n${analysis.discussion}` +
-                  `\n\n---\n📄 HAND HISTORY\n${handHistory}`
+                  `📋 ${t.haSummary.toUpperCase()}\n${analysis.summary}` +
+                  `\n\n🃏 ${t.haBreakdown.toUpperCase()}\n${streetLines}` +
+                  (analysis.keyMistake ? `\n\n🎯 ${t.haKeySpot.toUpperCase()}\n${analysis.keyMistake}` : '') +
+                  `\n\n💬 ${t.haDiscussion.toUpperCase()}\n${analysis.discussion}` +
+                  `\n\n---\n📄 ${t.haPostHistory.toUpperCase()}\n${handHistory}`
 
                 localStorage.setItem('hand-analyzer-prefill', body)
                 window.location.href = '/post/37'
               }}
               className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors"
             >
-              Post this hand to the forum →
+              {t.haPostToForum}
             </button>
           </div>
         </div>
       )}
 
       <p className="mt-8 text-center text-xs text-gray-400 dark:text-gray-600">
-        Powered by Headsuper
+        {t.poweredBy}
       </p>
     </div>
   )

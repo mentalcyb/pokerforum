@@ -1,5 +1,7 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
+import { useApp } from '@/contexts/AppContext'
+import { streetName } from '@/lib/i18n'
 
 // ── Card types & utilities ─────────────────────────────────────────────────
 
@@ -180,6 +182,7 @@ function CardPicker({
   label: string
   fourColor: boolean
 }) {
+  const { t } = useApp()
   const selectedKeys = new Set(selected.map(cardKey))
 
   function toggle(c: Card) {
@@ -237,26 +240,18 @@ function CardPicker({
           </span>
         ))}
         {selected.length === 0 && (
-          <span className="text-xs text-gray-400 italic">None selected</span>
+          <span className="text-xs text-gray-400 italic">{t.ocNoneSelected}</span>
         )}
       </div>
     </div>
   )
 }
 
-// ── Street label helper ────────────────────────────────────────────────────
-
-function streetLabel(boardLen: number): string {
-  if (boardLen === 0) return 'Preflop'
-  if (boardLen === 3) return 'Flop'
-  if (boardLen === 4) return 'Turn'
-  if (boardLen === 5) return 'River'
-  return `Board (${boardLen})`
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function OddsCalculatorPage() {
+  const { t } = useApp()
+  const streetLabel = (n: number) => streetName(n, t)
   const [game, setGame] = useState<'holdem' | 'omaha'>('holdem')
   const [playerCount, setPlayerCount] = useState(2)
   const [playerHands, setPlayerHands] = useState<Card[][]>([[], [], [], [], [], []])
@@ -265,7 +260,8 @@ export default function OddsCalculatorPage() {
   const [turn, setTurn] = useState<Card[]>([])
   const [river, setRiver] = useState<Card[]>([])
   const [results, setResults] = useState<SimResult[] | null>(null)
-  const [resultStreet, setResultStreet] = useState('')
+  // Board size the results were computed for (label is derived at render time so it follows the language)
+  const [resultBoardLen, setResultBoardLen] = useState(0)
   const [running, setRunning] = useState(false)
   const [fourColor, setFourColor] = useState(false)
 
@@ -320,7 +316,7 @@ export default function OddsCalculatorPage() {
       const b = [...flop, ...turn, ...river]
       const res = simulate(game, players, b, 7500)
       setResults(res)
-      setResultStreet(streetLabel(b.length))
+      setResultBoardLen(b.length)
       setRunning(false)
     }, 10)
   }
@@ -344,8 +340,8 @@ export default function OddsCalculatorPage() {
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl">🎲</div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Poker Odds Calculator</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Hold'em &amp; Omaha</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t.ocTitle}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t.ocSubtitle}</p>
         </div>
       </div>
 
@@ -353,7 +349,7 @@ export default function OddsCalculatorPage() {
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-5">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Game</div>
+            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">{t.ocGame}</div>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
               {(['holdem', 'omaha'] as const).map(g => (
                 <button key={g} onClick={() => changeGame(g)}
@@ -364,7 +360,7 @@ export default function OddsCalculatorPage() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Players</div>
+            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">{t.ocPlayers}</div>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
               {[2, 3, 4, 5, 6].map(n => (
                 <button key={n} onClick={() => { setPlayerCount(n); setResults(null) }}
@@ -375,7 +371,7 @@ export default function OddsCalculatorPage() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Card Colors</div>
+            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">{t.ocCardColors}</div>
             <button
               onClick={toggleFourColor}
               className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
@@ -390,7 +386,7 @@ export default function OddsCalculatorPage() {
                 <span className={fourColor ? 'text-blue-600' : 'text-red-600'}>♦</span>
                 <span className={fourColor ? 'text-green-600' : 'text-gray-800 dark:text-gray-200'}>♣</span>
               </span>
-              4-Color
+              {t.oc4Color}
             </button>
           </div>
         </div>
@@ -408,7 +404,7 @@ export default function OddsCalculatorPage() {
                 onChange={cards => setPlayerHand(i, cards)}
                 blocked={otherUsed}
                 maxCards={holeCardCount}
-                label={`Player ${i + 1} — ${holeCardCount} hole cards`}
+                label={t.ocHoleCards(i + 1, holeCardCount)}
                 fourColor={fourColor}
               />
             </div>
@@ -420,10 +416,10 @@ export default function OddsCalculatorPage() {
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden mb-5">
         <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Community Cards</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t.ocCommunity}</h2>
             {/* Street progress indicator */}
             <div className="flex items-center gap-1 ml-2">
-              {(['Preflop', 'Flop', 'Turn', 'River'] as const).map((s, idx) => {
+              {[t.streetPreflop, t.streetFlop, t.streetTurn, t.streetRiver].map((s, idx) => {
                 const active = (idx === 0 && board.length === 0) || (idx === 1 && board.length === 3) || (idx === 2 && board.length === 4) || (idx === 3 && board.length === 5)
                 const done = (idx === 1 && board.length >= 3) || (idx === 2 && board.length >= 4) || (idx === 3 && board.length >= 5)
                 return (
@@ -436,7 +432,7 @@ export default function OddsCalculatorPage() {
           </div>
           {board.length > 0 && (
             <button onClick={resetBoard} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-              Clear board
+              {t.ocClearBoard}
             </button>
           )}
         </div>
@@ -449,7 +445,7 @@ export default function OddsCalculatorPage() {
               onChange={cards => { setFlop(cards); if (cards.length < 3) { setTurn([]); setRiver([]) } setResults(null) }}
               blocked={boardBlocked(flop)}
               maxCards={3}
-              label="Flop — 3 cards"
+              label={t.ocFlopLabel}
               fourColor={fourColor}
             />
           </div>
@@ -461,7 +457,7 @@ export default function OddsCalculatorPage() {
               onChange={cards => { setTurn(cards); if (cards.length < 1) setRiver([]); setResults(null) }}
               blocked={boardBlocked(turn)}
               maxCards={1}
-              label={`Turn — 1 card${flop.length < 3 ? ' (deal flop first)' : ''}`}
+              label={`${t.ocTurnLabel}${flop.length < 3 ? t.ocDealFlopFirst : ''}`}
               fourColor={fourColor}
             />
           </div>
@@ -473,7 +469,7 @@ export default function OddsCalculatorPage() {
               onChange={cards => { setRiver(cards); setResults(null) }}
               blocked={boardBlocked(river)}
               maxCards={1}
-              label={`River — 1 card${turn.length < 1 ? ' (deal turn first)' : ''}`}
+              label={`${t.ocRiverLabel}${turn.length < 1 ? t.ocDealTurnFirst : ''}`}
               fourColor={fourColor}
             />
           </div>
@@ -492,24 +488,24 @@ export default function OddsCalculatorPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
             </svg>
-            Running simulation…
+            {t.ocRunning}
           </span>
         ) : !canRun()
-          ? `Select ${holeCardCount} cards for each player to calculate`
-          : `🎲 Calculate ${streetLabel(board.length)} Equity`}
+          ? t.ocSelectCards(holeCardCount)
+          : t.ocCalculate(streetLabel(board.length))}
       </button>
 
       <p className="mt-2 mb-6 text-center text-xs text-gray-400 dark:text-gray-600">
-        Powered by Headsuper
+        {t.poweredBy}
       </p>
 
       {/* Results */}
       {results && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900 dark:text-white">Results</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">{t.ocResults}</h2>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-600">
-              {resultStreet} Equity
+              {t.ocEquity(streetLabel(resultBoardLen))}
             </span>
           </div>
           {results.slice(0, playerCount).map((r, i) => {
@@ -520,7 +516,7 @@ export default function OddsCalculatorPage() {
               <div key={i} className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 last:border-0">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Player {i + 1}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.ocPlayer} {i + 1}</span>
                     <span className="flex gap-1">
                       {hand.map(c => (
                         <span key={cardKey(c)} className={`text-sm font-bold ${suitColor(c.suit, fourColor)}`}>
@@ -531,9 +527,9 @@ export default function OddsCalculatorPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-lg font-bold text-brand-600">{winPct.toFixed(1)}%</span>
-                    <span className="text-xs text-gray-400 ml-1">win</span>
+                    <span className="text-xs text-gray-400 ml-1">{t.ocWin}</span>
                     {tiePct > 0.1 && (
-                      <span className="text-xs text-gray-400 ml-2">{tiePct.toFixed(1)}% tie</span>
+                      <span className="text-xs text-gray-400 ml-2">{tiePct.toFixed(1)}% {t.ocTie}</span>
                     )}
                   </div>
                 </div>
@@ -545,7 +541,7 @@ export default function OddsCalculatorPage() {
             )
           })}
           <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs text-gray-400 text-center">
-            Results are probabilistic estimates
+            {t.ocEstimates}
           </div>
         </div>
       )}

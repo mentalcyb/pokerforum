@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
+import { catName } from '@/lib/i18n'
 import Link from 'next/link'
 import ErrorState from '@/components/ErrorState'
 
@@ -14,17 +15,17 @@ const ICON_MAP: Record<string, string> = {
 interface UserRow { id: string; username: string; is_admin: boolean; is_moderator: boolean; is_banned: boolean; created_at: string }
 interface SecurityUser { id: string; username: string; email: string; is_banned: boolean; is_admin: boolean; is_moderator: boolean; created_at: string; post_count: number; last_login: string | null; last_ip: string | null }
 interface SessionRow { id: string; user_id: string; ip_address: string; user_agent: string; action: string; created_at: string; profiles: { username: string } | null }
-interface PostRow { id: number; title: string; content: string; created_at: string; category_id: number | null; profiles: { username: string } | null; categories: { name: string } | null }
-interface CategoryRow { id: number; name: string; description: string; icon: string; post_count: number }
+interface PostRow { id: number; title: string; content: string; created_at: string; category_id: number | null; profiles: { username: string } | null; categories: { name: string; name_en?: string | null } | null }
+interface CategoryRow { id: number; name: string; description: string; name_en?: string | null; description_en?: string | null; icon: string; post_count: number }
 interface TournamentRow { id: number; name: string; date: string; buyin: string; status: string }
 interface PostEditState { id: number; title: string; content: string }
-interface CatEditState { id: number; name: string; description: string; icon: string }
-interface NewCatState { name: string; description: string; icon: string }
+interface CatEditState { id: number; name: string; description: string; name_en: string; description_en: string; icon: string }
+interface NewCatState { name: string; description: string; name_en: string; description_en: string; icon: string }
 interface TournamentEditState { id: number; name: string; date: string; buyin: string; status: string }
 interface NewTournamentState { name: string; date: string; buyin: string; status: string }
 
 export default function AdminPage() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const router = useRouter()
   const [users, setUsers] = useState<UserRow[]>([])
   const [posts, setPosts] = useState<PostRow[]>([])
@@ -75,7 +76,7 @@ export default function AdminPage() {
 
   async function loadData() {
     const [{ data: p, error: pErr }, { data: u, error: uErr }, { data: c, error: cErr }, { data: tr, error: trErr }] = await Promise.all([
-      supabase.from('posts').select('id, title, content, created_at, category_id, profiles(username), categories(name)').order('created_at', { ascending: false }),
+      supabase.from('posts').select('id, title, content, created_at, category_id, profiles(username), categories(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, username, is_admin, is_moderator, is_banned, created_at').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('id'),
       supabase.from('tournaments').select('*').order('created_at'),
@@ -123,21 +124,32 @@ export default function AdminPage() {
     if (e) { setError(`move error: ${e.message}`); setSaving(false); return }
     const cat = categories.find(c => c.id === movingPost.categoryId)
     setPosts(prev => prev.map(p => p.id === movingPost.id
-      ? { ...p, category_id: movingPost.categoryId, categories: cat ? { name: cat.name } : p.categories }
+      ? { ...p, category_id: movingPost.categoryId, categories: cat ? { name: cat.name, name_en: cat.name_en } : p.categories }
       : p
     ))
     setMovingPost(null); setSaving(false)
   }
 
   // --- Categories ---
+  // The English columns only exist once supabase/category_translations.sql has been run.
+  // Until then, keep reading/writing only the original columns so nothing breaks.
+  const hasEnColumns = categories.some(c => 'name_en' in c)
+
+  function catPayload(c: { name: string; description: string; name_en: string; description_en: string; icon: string }) {
+    const base = { name: c.name, description: c.description, icon: c.icon }
+    return hasEnColumns
+      ? { ...base, name_en: c.name_en.trim() || null, description_en: c.description_en.trim() || null }
+      : base
+  }
+
   async function saveCatEdit() {
     if (!catEditing) return
     setError(null); setSaving(true)
     const { error: e } = await supabase.from('categories')
-      .update({ name: catEditing.name, description: catEditing.description, icon: catEditing.icon })
+      .update(catPayload(catEditing))
       .eq('id', catEditing.id)
     if (e) { setError(`category update error: ${e.message}`); setSaving(false); return }
-    setCategories(prev => prev.map(c => c.id === catEditing.id ? { ...c, ...catEditing } : c))
+    setCategories(prev => prev.map(c => c.id === catEditing.id ? { ...c, ...catPayload(catEditing) } : c))
     setCatEditing(null); setSaving(false)
   }
 
@@ -153,7 +165,7 @@ export default function AdminPage() {
     if (!newCat || !newCat.name.trim()) return
     setError(null); setSaving(true)
     const { data, error: e } = await supabase.from('categories')
-      .insert({ name: newCat.name, description: newCat.description, icon: newCat.icon, post_count: 0 })
+      .insert({ ...catPayload(newCat), post_count: 0 })
       .select().single()
     if (e) { setError(`create error: ${e.message}`); setSaving(false); return }
     setCategories(prev => [...prev, data as unknown as CategoryRow])
@@ -201,11 +213,11 @@ export default function AdminPage() {
       const token = session?.access_token ?? ''
       const res = await fetch('/api/admin/security', { headers: { Authorization: `Bearer ${token}` } })
       const json = await res.json()
-      if (!res.ok) { setSecurityError(json.error ?? 'Failed to load'); setSecurityLoading(false); return }
+      if (!res.ok) { setSecurityError(json.error ?? t.adminFailedToLoad); setSecurityLoading(false); return }
       setSecurityUsers(json.users ?? [])
       setSessions(json.sessions ?? [])
     } catch (e) {
-      setSecurityError('Network error')
+      setSecurityError(t.networkError)
     }
     setSecurityLoading(false)
   }
@@ -264,7 +276,7 @@ export default function AdminPage() {
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-3 underline text-xs">dismiss</button>
+          <button onClick={() => setError(null)} className="ml-3 underline text-xs">{t.adminDismiss}</button>
         </div>
       )}
 
@@ -305,7 +317,7 @@ export default function AdminPage() {
                 ) : (
                   <div className="flex items-center gap-4 px-5 py-4">
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-brand-600 mb-0.5">{post.categories?.name}</div>
+                      <div className="text-xs text-brand-600 mb-0.5">{catName(post.categories, lang)}</div>
                       <Link href={`/post/${post.id}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 truncate block">{post.title}</Link>
                       <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} className="text-xs text-gray-400 hover:text-brand-600 transition-colors mt-0.5 block">{post.profiles?.username}</Link>
                     </div>
@@ -340,7 +352,7 @@ export default function AdminPage() {
               <h2 className="font-medium text-gray-900 dark:text-white text-sm">{t.categoriesTab}</h2>
               {!newCat && (
                 <button
-                  onClick={() => setNewCat({ name: '', description: '', icon: 'spade' })}
+                  onClick={() => setNewCat({ name: '', description: '', name_en: '', description_en: '', icon: 'spade' })}
                   className="px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors"
                 >
                   {t.newCategory}
@@ -363,6 +375,22 @@ export default function AdminPage() {
                   placeholder={t.description}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
+                {hasEnColumns && (
+                  <>
+                    <input
+                      value={newCat.name_en}
+                      onChange={e => setNewCat({ ...newCat, name_en: e.target.value })}
+                      placeholder={t.adminNameEn}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                    <input
+                      value={newCat.description_en}
+                      onChange={e => setNewCat({ ...newCat, description_en: e.target.value })}
+                      placeholder={t.adminDescriptionEn}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">{t.icon}:</span>
                   {ICON_OPTIONS.map(icon => (
@@ -397,6 +425,16 @@ export default function AdminPage() {
                       <input value={catEditing.description} onChange={e => setCatEditing({ ...catEditing, description: e.target.value })}
                         placeholder={t.description}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      {hasEnColumns && (
+                        <>
+                          <input value={catEditing.name_en} onChange={e => setCatEditing({ ...catEditing, name_en: e.target.value })}
+                            placeholder={t.adminNameEn}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                          <input value={catEditing.description_en} onChange={e => setCatEditing({ ...catEditing, description_en: e.target.value })}
+                            placeholder={t.adminDescriptionEn}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                        </>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">{t.icon}:</span>
                         {ICON_OPTIONS.map(icon => (
@@ -423,13 +461,16 @@ export default function AdminPage() {
                         {ICON_MAP[cat.icon] || '♠'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{cat.name}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {cat.name}
+                          {cat.name_en && <span className="ml-2 text-xs font-normal text-gray-400">🇬🇧 {cat.name_en}</span>}
+                        </div>
                         <div className="text-xs text-gray-400 truncate mt-0.5">{cat.description}</div>
                         <div className="text-xs text-gray-400 mt-0.5">{cat.post_count} {t.catPostCount}</div>
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         <button
-                          onClick={() => setCatEditing({ id: cat.id, name: cat.name, description: cat.description, icon: cat.icon })}
+                          onClick={() => setCatEditing({ id: cat.id, name: cat.name, description: cat.description, name_en: cat.name_en ?? '', description_en: cat.description_en ?? '', icon: cat.icon })}
                           className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors">
                           {t.edit}
                         </button>
@@ -471,18 +512,18 @@ export default function AdminPage() {
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 <div className="grid grid-cols-2 gap-3">
                   <input value={newTournament.date} onChange={e => setNewTournament({ ...newTournament, date: e.target.value })}
-                    placeholder="Date (e.g. June 1)"
+                    placeholder={t.adminDatePlaceholder}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   <input value={newTournament.buyin} onChange={e => setNewTournament({ ...newTournament, buyin: e.target.value })}
-                    placeholder="Buy-in (e.g. ₾200)"
+                    placeholder={t.adminBuyinPlaceholder}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
                 <select value={newTournament.status} onChange={e => setNewTournament({ ...newTournament, status: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                  <option value="open">open</option>
-                  <option value="online">online</option>
-                  <option value="soon">soon</option>
-                  <option value="closed">closed</option>
+                  <option value="open">{t.statusOpen}</option>
+                  <option value="online">{t.statusOnline}</option>
+                  <option value="soon">{t.statusSoon}</option>
+                  <option value="closed">{t.statusClosed}</option>
                 </select>
                 <div className="flex gap-2">
                   <button onClick={createTournament} disabled={saving || !newTournament.name.trim()}
@@ -504,22 +545,22 @@ export default function AdminPage() {
                   {tournamentEditing?.id === tr.id ? (
                     <div className="px-5 py-4 space-y-3">
                       <input value={tournamentEditing.name} onChange={e => setTournamentEditing({ ...tournamentEditing, name: e.target.value })}
-                        placeholder="სახელი"
+                        placeholder={t.name}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       <div className="grid grid-cols-2 gap-3">
                         <input value={tournamentEditing.date} onChange={e => setTournamentEditing({ ...tournamentEditing, date: e.target.value })}
-                          placeholder="თარიღი"
+                          placeholder={t.adminDatePlaceholder}
                           className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                         <input value={tournamentEditing.buyin} onChange={e => setTournamentEditing({ ...tournamentEditing, buyin: e.target.value })}
-                          placeholder="Buy-in"
+                          placeholder={t.trBuyin}
                           className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       </div>
                       <select value={tournamentEditing.status} onChange={e => setTournamentEditing({ ...tournamentEditing, status: e.target.value })}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        <option value="open">open</option>
-                        <option value="online">online</option>
-                        <option value="soon">soon</option>
-                        <option value="closed">closed</option>
+                        <option value="open">{t.statusOpen}</option>
+                        <option value="online">{t.statusOnline}</option>
+                        <option value="soon">{t.statusSoon}</option>
+                        <option value="closed">{t.statusClosed}</option>
                       </select>
                       <div className="flex gap-2">
                         <button onClick={saveTournamentEdit} disabled={saving}
@@ -540,7 +581,7 @@ export default function AdminPage() {
                         <div className="text-xs text-gray-400 mt-0.5">{tr.date} · {tr.buyin}</div>
                         <div className="text-xs mt-0.5">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${tr.status === 'open' ? 'bg-green-100 text-green-700' : tr.status === 'online' ? 'bg-blue-100 text-blue-700' : tr.status === 'soon' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {tr.status}
+                            {({ open: t.statusOpen, online: t.statusOnline, soon: t.statusSoon, closed: t.statusClosed } as Record<string, string>)[tr.status] ?? tr.status}
                           </span>
                         </div>
                       </div>
@@ -570,7 +611,7 @@ export default function AdminPage() {
           {securityError && (
             <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
               {securityError}
-              <p className="mt-1 text-xs opacity-75">Make sure SUPABASE_SERVICE_ROLE_KEY is set in Vercel and the user_sessions table exists (run supabase/user_sessions.sql).</p>
+              <p className="mt-1 text-xs opacity-75">{t.adminSecurityHint}</p>
             </div>
           )}
           {securityLoading ? (
@@ -581,21 +622,21 @@ export default function AdminPage() {
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
                   <span className="text-lg">👥</span>
-                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Users &amp; Security</h2>
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.adminUsersSecurity}</h2>
                   <span className="ml-auto text-xs text-gray-400">{securityUsers.length} users</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400 text-left">
-                        <th className="px-4 py-3 font-medium">User</th>
-                        <th className="px-4 py-3 font-medium">Email</th>
-                        <th className="px-4 py-3 font-medium">Registered</th>
-                        <th className="px-4 py-3 font-medium">Last Login</th>
-                        <th className="px-4 py-3 font-medium">Last IP</th>
-                        <th className="px-4 py-3 font-medium">Posts</th>
-                        <th className="px-4 py-3 font-medium">Status</th>
-                        <th className="px-4 py-3 font-medium">Actions</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColUser}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColEmail}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColRegistered}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColLastLogin}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColLastIp}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColPosts}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColStatus}</th>
+                        <th className="px-4 py-3 font-medium">{t.adminColActions}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -608,8 +649,8 @@ export default function AdminPage() {
                               </div>
                               <div>
                                 <div className={`font-medium ${u.is_banned ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>{u.username}</div>
-                                {u.is_admin && <span className="text-xs text-amber-600 font-medium">admin</span>}
-                                {u.is_moderator && !u.is_admin && <span className="text-xs text-blue-600 font-medium">mod</span>}
+                                {u.is_admin && <span className="text-xs text-amber-600 font-medium">{t.adminBadge}</span>}
+                                {u.is_moderator && !u.is_admin && <span className="text-xs text-blue-600 font-medium">{t.adminModBadge}</span>}
                               </div>
                             </div>
                           </td>
@@ -626,7 +667,7 @@ export default function AdminPage() {
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
                             {u.is_admin
-                              ? <span className="text-gray-300 dark:text-gray-600" title="Hidden for admins">—</span>
+                              ? <span className="text-gray-300 dark:text-gray-600" title={t.adminHiddenForAdmins}>—</span>
                               : u.last_ip || <span className="text-gray-300 dark:text-gray-600">—</span>
                             }
                           </td>
@@ -635,8 +676,8 @@ export default function AdminPage() {
                           </td>
                           <td className="px-4 py-3">
                             {u.is_banned
-                              ? <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium">Banned</span>
-                              : <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 font-medium">Active</span>
+                              ? <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium">{t.isBanned}</span>
+                              : <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 font-medium">{t.adminActive}</span>
                             }
                           </td>
                           <td className="px-4 py-3">
@@ -662,18 +703,18 @@ export default function AdminPage() {
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
                   <span className="text-lg">🕵️</span>
-                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Recent Activity Log</h2>
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.adminActivityLog}</h2>
                   <span className="ml-auto text-xs text-gray-400">Last {sessions.length} events</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 text-left">
-                        <th className="px-4 py-2.5 font-medium">Time</th>
-                        <th className="px-4 py-2.5 font-medium">User</th>
-                        <th className="px-4 py-2.5 font-medium">Action</th>
-                        <th className="px-4 py-2.5 font-medium">IP Address</th>
-                        <th className="px-4 py-2.5 font-medium">User Agent</th>
+                        <th className="px-4 py-2.5 font-medium">{t.adminColTime}</th>
+                        <th className="px-4 py-2.5 font-medium">{t.adminColUser}</th>
+                        <th className="px-4 py-2.5 font-medium">{t.adminColAction}</th>
+                        <th className="px-4 py-2.5 font-medium">{t.adminColIp}</th>
+                        <th className="px-4 py-2.5 font-medium">{t.adminColUserAgent}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -699,7 +740,7 @@ export default function AdminPage() {
                         </tr>
                       ))}
                       {sessions.length === 0 && (
-                        <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No sessions logged yet.</td></tr>
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">{t.adminNoSessions}</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -715,25 +756,25 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 w-full max-w-sm shadow-xl">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Move Topic</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.adminMoveTopic}</h2>
               <button onClick={() => setMovingPost(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none">✕</button>
             </div>
             <div className="px-5 py-4 space-y-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Select the target category:</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.adminSelectTarget}</p>
               <select
                 value={movingPost.categoryId ?? ''}
                 onChange={e => setMovingPost({ ...movingPost, categoryId: Number(e.target.value) })}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
-                <option value="" disabled>Select category…</option>
+                <option value="" disabled>{t.adminSelectCategory}</option>
                 {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{ICON_MAP[cat.icon] || '♠'} {cat.name}</option>
+                  <option key={cat.id} value={cat.id}>{ICON_MAP[cat.icon] || '♠'} {catName(cat, lang)}</option>
                 ))}
               </select>
               <div className="flex gap-2">
                 <button onClick={movePost} disabled={saving || movingPost.categoryId == null}
                   className="px-4 py-2 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors">
-                  {saving ? 'Moving…' : 'Move Topic'}
+                  {saving ? t.adminMoving : t.adminMoveTopic}
                 </button>
                 <button onClick={() => setMovingPost(null)}
                   className="px-4 py-2 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">

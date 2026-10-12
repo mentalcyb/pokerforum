@@ -6,19 +6,20 @@ import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
-import allTournaments from '@/data/tournaments'
+import allTournaments, { trField } from '@/data/tournaments'
+import { catName, catDesc } from '@/lib/i18n'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
 }
 
-interface Category { id: number; name: string; description: string; icon: string; post_count: number }
+interface Category { id: number; name: string; description: string; name_en?: string | null; description_en?: string | null; icon: string; post_count: number }
 interface Post { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string } | null }
 
 const PAGE_SIZE = 20
 
 export default function CategoryPage() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const params = useParams()
   const [category, setCategory] = useState<Category | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -102,7 +103,7 @@ export default function CategoryPage() {
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
         <Link href="/" className="hover:text-brand-600 transition-colors">{t.home}</Link>
         <span>›</span>
-        <span className="text-gray-700 dark:text-gray-300 font-medium">{category.name}</span>
+        <span className="text-gray-700 dark:text-gray-300 font-medium">{catName(category, lang)}</span>
       </div>
 
       {/* Category header */}
@@ -112,8 +113,8 @@ export default function CategoryPage() {
             {CATEGORY_ICONS[category.icon] || '♠'}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{category.description}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{catName(category, lang)}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{catDesc(category, lang)}</p>
             <p className="text-xs text-gray-400 mt-1">{posts.length} {t.posts}</p>
           </div>
         </div>
@@ -197,13 +198,13 @@ export default function CategoryPage() {
               <div key={tr.id} className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${seriesColors[tr.series] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
-                    {tr.series}
+                    {tr.series === 'Local' ? t.trLocal : tr.series}
                   </span>
                   <span className="text-xs">{tr.flag}</span>
                 </div>
                 <div className="text-xs font-semibold text-gray-900 dark:text-white leading-snug">{tr.name}</div>
-                <div className="text-xs text-gray-400 truncate mt-0.5">{tr.location}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{tr.dates}</div>
+                <div className="text-xs text-gray-400 truncate mt-0.5">{trField(tr, 'location', lang)}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{trField(tr, 'dates', lang)}</div>
               </div>
             ))}
             <Link

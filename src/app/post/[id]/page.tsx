@@ -9,18 +9,19 @@ import ImageUploader from '@/components/ImageUploader'
 import PokerAvatar from '@/components/PokerAvatar'
 import EmojiPicker from '@/components/EmojiPicker'
 import ErrorState from '@/components/ErrorState'
+import { catName } from '@/lib/i18n'
 
 type Post = {
   id: number; title: string; content: string; created_at: string
   reply_count: number; view_count: number; user_id: string
-  profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean }; categories: { name: string }
+  profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean }; categories: { name: string; name_en?: string | null } | null
 }
 type Reply = { id: number; content: string; created_at: string; user_id?: string; profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean } }
 
 const REPLY_PAGE_SIZE = 30
 
 export default function PostPage() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const params = useParams()
   const router = useRouter()
   const [post, setPost] = useState<Post | null>(null)
@@ -80,7 +81,7 @@ export default function PostPage() {
 
     try {
       const { data: p, error: pErr } = await supabase.from('posts')
-        .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature, is_moderator), categories(name)')
+        .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, signature, is_moderator), categories(*)')
         .eq('id', params.id).single()
 
       let current: any = p
@@ -88,7 +89,7 @@ export default function PostPage() {
         console.error('[PostPage] post fetch error:', pErr.message, pErr.code)
         // Retry without signature in case the column doesn't exist yet
         const { data: p2, error: p2Err } = await supabase.from('posts')
-          .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, is_moderator), categories(name)')
+          .select('id, title, content, created_at, reply_count, view_count, user_id, profiles(username, avatar, is_moderator), categories(*)')
           .eq('id', params.id).single()
         if (p2Err) throw p2Err
         current = p2
@@ -242,7 +243,7 @@ export default function PostPage() {
       <ErrorState message={pageError} retryLabel={t.retry} onRetry={loadPost} />
     </div>
   )
-  if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
+  if (!post) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.postNotFound}</div>
 
   const isAuthor = user && user.id === post.user_id
   const canModerate = isMod || isAdmin
@@ -305,7 +306,7 @@ export default function PostPage() {
           /* ── Normal post view ── */
           <>
             <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="text-xs text-brand-600 font-medium">{(post.categories as any)?.name}</div>
+              <div className="text-xs text-brand-600 font-medium">{catName(post.categories, lang)}</div>
               <div className="flex gap-2 flex-shrink-0">
               {canModerate && !isAuthor && (
                 <button onClick={modDeletePost}
