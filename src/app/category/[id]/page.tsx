@@ -6,7 +6,8 @@ import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
-import allTournaments, { trField } from '@/data/tournaments'
+import { flagUrl, trField } from '@/data/tournaments'
+import { useUpcomingTournaments } from '@/lib/useUpcomingTournaments'
 import { catName, catDesc } from '@/lib/i18n'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -20,6 +21,7 @@ const PAGE_SIZE = 20
 
 export default function CategoryPage() {
   const { t, lang } = useApp()
+  const upcoming = useUpcomingTournaments()
   const params = useParams()
   const [category, setCategory] = useState<Category | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -95,6 +97,8 @@ export default function CategoryPage() {
     Merit: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
     APT: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
     Local: 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400',
+    PokerStars: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400',
+    Triton: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400',
   }
 
   return (
@@ -194,13 +198,15 @@ export default function CategoryPage() {
               <span className="text-base">🏆</span>
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
             </div>
-            {allTournaments.map(tr => (
+            {upcoming.length === 0 && <div className="px-4 py-3 text-xs text-gray-400">{t.noTournaments}</div>}
+            {upcoming.slice(0, 5).map(tr => (
               <div key={tr.id} className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${seriesColors[tr.series] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
                     {tr.series === 'Local' ? t.trLocal : tr.series}
                   </span>
-                  <span className="text-xs">{tr.flag}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={flagUrl(tr)} width={16} height={11} alt={tr.country.toUpperCase()} className="inline-block rounded-[2px]" />
                 </div>
                 <div className="text-xs font-semibold text-gray-900 dark:text-white leading-snug">{tr.name}</div>
                 <div className="text-xs text-gray-400 truncate mt-0.5">{trField(tr, 'location', lang)}</div>
