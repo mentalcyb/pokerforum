@@ -7,7 +7,14 @@
     "skipLibCheck": true,
     "rootDir": "src/lib/poker",
     "outDir": ".test-build",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src/lib/poker/**/*.ts"]
+  "include": [
+    "src/lib/poker/cards.ts",
+    "src/lib/poker/evaluate.ts",
+    "src/lib/poker/engine.ts",
+    "src/lib/poker/__tests__/**/*.ts"
+  ]
 }

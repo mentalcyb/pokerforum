@@ -1,26 +1,25 @@
 const SUIT_SYMBOL: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' }
-const SUIT_COLOR: Record<string, string> = {
-  s: 'text-gray-900',
-  c: 'text-gray-900',
-  h: 'text-red-600',
-  d: 'text-red-600',
-}
+
+// Classic: black ♠♣, red ♥♦. Four-color: ♠ black, ♥ red, ♦ blue, ♣ green — easier to tell suits apart.
+const SUIT_COLOR: Record<string, string> = { s: 'text-gray-900', c: 'text-gray-900', h: 'text-red-600', d: 'text-red-600' }
+const SUIT_COLOR_4: Record<string, string> = { s: 'text-gray-900', c: 'text-green-700', h: 'text-red-600', d: 'text-blue-600' }
 
 const SIZES = {
-  sm: 'w-7 h-10 text-xs rounded',
-  md: 'w-10 h-14 text-sm rounded-md',
-  lg: 'w-12 h-[4.25rem] sm:w-14 sm:h-20 text-base sm:text-lg rounded-lg',
+  sm: 'w-8 h-11 text-sm rounded',
+  md: 'w-11 h-[3.75rem] text-base rounded-md sm:w-12 sm:h-[4.25rem] sm:text-lg',
+  lg: 'w-12 h-[4.5rem] text-lg rounded-lg sm:w-16 sm:h-[5.5rem] sm:text-2xl',
 }
 
 type Props = {
   /** e.g. "As"; omit for a face-down card */
   card?: string
   size?: keyof typeof SIZES
+  fourColor?: boolean
   dim?: boolean
   highlight?: boolean
 }
 
-export default function PlayingCard({ card, size = 'md', dim, highlight }: Props) {
+export default function PlayingCard({ card, size = 'md', fourColor, dim, highlight }: Props) {
   const base = `${SIZES[size]} flex-shrink-0 select-none shadow-md border transition-all`
   if (!card) {
     return (
@@ -32,9 +31,10 @@ export default function PlayingCard({ card, size = 'md', dim, highlight }: Props
   }
   const rank = card[0] === 'T' ? '10' : card[0]
   const suit = card[1]
+  const color = (fourColor ? SUIT_COLOR_4 : SUIT_COLOR)[suit]
   return (
     <div
-      className={`${base} bg-white border-gray-300 flex flex-col items-center justify-center leading-none font-bold ${SUIT_COLOR[suit]} ${dim ? 'opacity-40' : ''} ${highlight ? 'ring-2 ring-amber-400 -translate-y-1' : ''}`}
+      className={`${base} bg-white border-gray-300 flex flex-col items-center justify-center leading-none font-bold ${color} ${dim ? 'opacity-40' : ''} ${highlight ? 'ring-2 ring-amber-400 -translate-y-1' : ''}`}
       aria-label={`${rank}${SUIT_SYMBOL[suit]}`}
     >
       <span>{rank}</span>

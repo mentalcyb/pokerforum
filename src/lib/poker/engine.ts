@@ -49,7 +49,7 @@ export interface Player {
 
 export type LogKind =
   | 'blind' | 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin'
-  | 'street' | 'win' | 'return' | 'join' | 'leave' | 'rebuy' | 'timeout' | 'sitout' | 'sitin'
+  | 'street' | 'win' | 'return' | 'join' | 'leave' | 'rebuy' | 'timeout' | 'sitout' | 'sitin' | 'kick'
 
 export interface LogEntry {
   kind: LogKind
@@ -107,6 +107,17 @@ export interface GameState {
   log: LogEntry[]
   /** chips bought in / cashed out per user, for the end-of-night settlement */
   ledger: Record<string, LedgerEntry>
+  /** table chat, newest last (optional: tables created before chat existed don't have it) */
+  chat?: ChatMessage[]
+  /** users the host removed; they can't sit at this table again */
+  kicked?: string[]
+}
+
+export interface ChatMessage {
+  userId: string
+  name: string
+  text: string
+  at: number
 }
 
 export interface Secret {
@@ -222,6 +233,8 @@ export function initialState(cfg: TableConfig): GameState {
     lastResult: null,
     log: [],
     ledger: {},
+    chat: [],
+    kicked: [],
   }
 }
 
@@ -248,6 +261,7 @@ export function sit(
   if (!Number.isInteger(seat) || seat < 0 || seat >= s.seats.length) throw new GameError('invalid_seat')
   if (s.seats[seat]) throw new GameError('seat_taken')
   if (seatOf(s, user.userId) >= 0) throw new GameError('already_seated')
+  if (s.kicked?.includes(user.userId)) throw new GameError('kicked')
   s.seats[seat] = {
     userId: user.userId,
     name: user.name,
@@ -638,6 +652,35 @@ function endHand(s: GameState, sec: Secret, ctx: Ctx, showdown: boolean): Result
 }
 
 /** What a given viewer may see. Hole cards are only ever sent to their owner. */
+// ─── host tools & chat ──────────────────────────────────────────────────────
+
+/** Host removes a player: same as them leaving, and they can't sit here again. */
+export function kick(state: GameState, secret: Secret, ctx: Ctx, seat: number): Result {
+  const p = state.seats[seat]
+  if (!p) throw new GameError('not_seated')
+  const r = leave(state, secret, ctx, seat)
+  r.state.kicked = Array.from(new Set([...(r.state.kicked ?? []), p.userId]))
+  log(r.state, { kind: 'kick', seat, name: p.name })
+  return r
+}
+
+const CHAT_LIMIT = 50
+const CHAT_MAX_LENGTH = 200
+const CHAT_MIN_INTERVAL_MS = 800
+
+export function addChat(state: GameState, user: { userId: string; name: string }, text: string, now: number): GameState {
+  const clean = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH)
+  if (!clean) throw new GameError('empty_message')
+  const s = clone(state)
+  const chat = s.chat ?? []
+  const last = [...chat].reverse().find(m => m.userId === user.userId)
+  if (last && now - last.at < CHAT_MIN_INTERVAL_MS) throw new GameError('too_fast')
+  chat.push({ userId: user.userId, name: user.name, text: clean, at: now })
+  if (chat.length > CHAT_LIMIT) chat.splice(0, chat.length - CHAT_LIMIT)
+  s.chat = chat
+  return s
+}
+
 export function cardsFor(secret: Secret, seat: number): Card[] {
   return secret.hands[seat] ?? []
 }
