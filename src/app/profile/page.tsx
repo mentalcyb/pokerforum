@@ -159,7 +159,7 @@ export default function ProfilePage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {t.chooseAvatar}
             </label>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
               {AVATARS.map(av => (
                 <button
                   key={av.id}
