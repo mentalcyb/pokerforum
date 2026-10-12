@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   act, Ctx, GameError, GameState, initialState, leave, rebuy, Secret, sit, startGame, startHand,
-  TableConfig, tick, Action, kick, addChat, blindStructure, setPaused, setSittingOut,
+  TableConfig, tick, Action, kick, addChat, blindStructure, setPaused, setSittingOut, showCards,
 } from '../engine'
 import { bestScore, compareScores, score5, handCategory } from '../evaluate'
 
@@ -527,4 +527,34 @@ test('random tournaments always finish with unique places 1..N', () => {
     assert.equal(t.finished, true, `game ${game} finished`)
     assert.deepEqual(t.places.map(p => p.place).sort((a, b) => a - b), Array.from({ length: players }, (_, k) => k + 1))
   }
+})
+
+// ─── show cards ────────────────────────────────────────────────────────────
+
+test('a folded player can show their cards; they are revealed when the hand ends', () => {
+  let r = startGame(table(['A', 'B', 'C']), { deck: [], hands: {} }, ctx())
+  const aCards = r.secret.hands[0]
+  r = play(r, 0, { type: 'fold' })
+  r.state = showCards(r.state, r.secret, 0)
+  assert.equal(r.state.revealed[0], undefined, 'not shown while the hand is still running')
+  r = play(r, 1, { type: 'fold' })
+  assert.equal(r.state.phase, 'handOver')
+  assert.deepEqual(r.state.revealed[0], aCards)
+  assert.ok(r.state.log.some(e => e.kind === 'show' && e.name === 'A'))
+  assert.equal(r.state.revealed[2], undefined, "the winner's cards stay hidden unless they show")
+})
+
+test('after the hand ends, showing reveals immediately; flag resets next hand', () => {
+  let r = startGame(table(['A', 'B', 'C']), { deck: [], hands: {} }, ctx())
+  r = play(r, 0, { type: 'fold' })
+  r = play(r, 1, { type: 'fold' })
+  const winnerCards = r.secret.hands[2]
+  r.state = showCards(r.state, r.secret, 2) // the winner shows a bluff
+  assert.deepEqual(r.state.revealed[2], winnerCards)
+  r = startHand(r.state, r.secret, ctx())
+  assert.deepEqual(r.state.revealed, {})
+  for (const p of r.state.seats) if (p) assert.equal(p.showCards, false)
+  // a player who wasn't dealt in has nothing to show
+  const s = sit(r.state, cfg, 4, { userId: 'u-D', name: 'D', avatar: null })
+  assert.throws(() => showCards(s, r.secret, 4), (e: GameError) => e.code === 'no_cards')
 })

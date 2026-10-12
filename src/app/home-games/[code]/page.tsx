@@ -72,6 +72,8 @@ function logLine(e: LogEntry, t: T): string {
       return t.hgLogOut(n, e.place ?? 0)
     case 'champion':
       return t.hgLogChampion(n)
+    case 'show':
+      return t.hgLogShow(n, (e.cards ?? []).map(c => c.replace('T', '10')).join(' '))
     case 'win':
       return t.hgLogText.win(n, a) + (e.hand !== undefined ? ` — ${t.hgHandNames[e.hand]}` : '')
     default: {
@@ -518,13 +520,18 @@ export default function HomeGameTablePage() {
                   <button onClick={() => send('start')} disabled={busy || eligibleCount(s) < 2}
                     className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{startLabel}</button>
                 )}
-                {view.myCards.length > 0 && me && !me.folded && (
+                {view.myCards.length > 0 && me && (
                   <div className="flex items-center gap-3 mr-2">
-                    <div className="flex gap-1">{view.myCards.map(c => <PlayingCard key={c} card={c} size="lg" fourColor={fourColor} />)}</div>
+                    <div className="flex gap-1">{view.myCards.map(c => <PlayingCard key={c} card={c} size="lg" fourColor={fourColor} dim={me.folded && !s.revealed[view.mySeat]} />)}</div>
                     {myHand !== null && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 ">{t.hgYourHand}:<br /><span className="text-sm font-bold text-amber-600 dark:text-amber-400">{t.hgHandNames[myHand]}</span></div>
                   )}
                   </div>
+                )}
+                {me && me.inHand && view.myCards.length > 0 && s.phase !== 'waiting' && !s.revealed[view.mySeat] && (
+                  me.showCards
+                    ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t.hgWillShow}</span>
+                    : <button onClick={() => send('show')} disabled={busy} className={`${btn} border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300`}>{t.hgShowCards}</button>
                 )}
                 {!tour && me && me.stack === 0 && !(s.phase === 'playing' && me.inHand && !me.folded) && (
                   <button onClick={() => send('rebuy')} disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgRebuy(view.config.startingStack)}</button>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import {
-  act, addChat, GameError, kick, leave, rebuy, seatOf, setPaused, setSittingOut, sit, startGame, tick,
+  act, addChat, GameError, kick, leave, rebuy, seatOf, setPaused, setSittingOut, showCards, sit, startGame, tick,
   TableConfig, validateConfig,
 } from '@/lib/poker/engine'
 import { getViewer, loadTable, mutateTable, viewFor } from '@/lib/poker/server'
@@ -83,6 +83,9 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         case 'rebuy':
           needSeat()
           return { state: rebuy(state, ctx.cfg, mySeat) }
+        case 'show':
+          needSeat()
+          return { state: showCards(state, secret, mySeat) }
         case 'sitOut':
           needSeat()
           return { state: setSittingOut(state, mySeat, true) }

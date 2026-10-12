@@ -75,12 +75,14 @@ export interface Player {
   leaving: boolean
   /** consecutive turns that timed out */
   missedTurns: number
+  /** asked to show their hole cards to everyone when the hand ends */
+  showCards?: boolean
 }
 
 export type LogKind =
   | 'blind' | 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin'
   | 'street' | 'win' | 'return' | 'join' | 'leave' | 'rebuy' | 'timeout' | 'sitout' | 'sitin' | 'kick'
-  | 'level' | 'out' | 'champion'
+  | 'level' | 'out' | 'champion' | 'show'
 
 export interface LogEntry {
   kind: LogKind
@@ -186,7 +188,7 @@ export interface Ctx {
 type Result = { state: GameState; secret: Secret }
 
 const LOG_LIMIT = 60
-const NEXT_HAND_DELAY_FOLD = 3000
+const NEXT_HAND_DELAY_FOLD = 4000
 const NEXT_HAND_DELAY_SHOWDOWN = 7000
 /** consecutive timeouts before a player is sat out automatically */
 const MAX_MISSED_TURNS = 2
@@ -538,6 +540,7 @@ export function startHand(state: GameState, _secret: Secret, ctx: Ctx): Result {
     p.allIn = false
     p.acted = false
     p.inHand = false
+    p.showCards = false
   }
   s.board = []
   s.revealed = {}
@@ -786,6 +789,13 @@ function endHand(s: GameState, sec: Secret, ctx: Ctx, showdown: boolean): Result
       s.revealed[x.seat] = sec.hands[x.seat] ?? []
     }
   }
+  // players who chose "show cards" during the hand (e.g. after folding)
+  for (const x of players) {
+    if (x.p.showCards && !s.revealed[x.seat] && sec.hands[x.seat]) {
+      s.revealed[x.seat] = sec.hands[x.seat]
+      log(s, { kind: 'show', seat: x.seat, name: x.p.name, cards: sec.hands[x.seat] })
+    }
+  }
 
   // Clockwise order from the button decides who gets odd chips.
   const clockwise = (seat: number) => (seat - s.button - 1 + s.seats.length) % s.seats.length
@@ -871,6 +881,26 @@ export function addChat(state: GameState, user: { userId: string; name: string }
   chat.push({ userId: user.userId, name: user.name, text: clean, at: now })
   if (chat.length > CHAT_LIMIT) chat.splice(0, chat.length - CHAT_LIMIT)
   s.chat = chat
+  return s
+}
+
+/**
+ * Show your hole cards to the table. During a hand the request is remembered and the
+ * cards are turned over when the hand ends, so folded cards can't influence the hand.
+ */
+export function showCards(state: GameState, secret: Secret, seat: number): GameState {
+  const s = clone(state)
+  const p = s.seats[seat]
+  if (!p) throw new GameError('not_seated')
+  const cards = secret.hands[seat]
+  if (!p.inHand || !cards?.length || s.phase === 'waiting') throw new GameError('no_cards')
+  if (s.revealed[seat]) return s
+  if (s.phase === 'playing') {
+    p.showCards = true
+  } else {
+    s.revealed[seat] = cards
+    log(s, { kind: 'show', seat, name: p.name, cards })
+  }
   return s
 }
 
