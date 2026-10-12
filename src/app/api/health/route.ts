@@ -4,13 +4,14 @@ import { createAdminClient } from '@/lib/supabase-admin'
 
 type CheckResult = { ok: boolean; detail?: string }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+// Accepts any thenable: Supabase query builders are PromiseLike, not real Promises
+async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)
   })
   try {
-    return await Promise.race([promise, timeout])
+    return await Promise.race([Promise.resolve(promise), timeout])
   } finally {
     clearTimeout(timeoutId!)
   }

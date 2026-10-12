@@ -361,7 +361,7 @@ export default function PostPage() {
           disabled={loadingMoreReplies}
           className="w-full mb-3 py-2 text-xs font-medium text-brand-600 border border-brand-200 dark:border-brand-800 rounded-xl hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors disabled:opacity-50"
         >
-          {loadingMoreReplies ? t.loading : '↑ Load earlier replies'}
+          {loadingMoreReplies ? t.loading : `↑ ${t.loadEarlierReplies}`}
         </button>
       )}
       {replies.map(r => (

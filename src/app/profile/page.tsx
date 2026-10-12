@@ -170,7 +170,7 @@ export default function ProfilePage() {
                       ? 'ring-2 ring-brand-600 ring-offset-2 dark:ring-offset-gray-900 scale-105'
                       : 'hover:scale-105 opacity-70 hover:opacity-100'
                   }`}
-                  title={av.label}
+                  title={t.avatarNames[av.id] ?? av.label}
                 >
                   <PokerAvatar avatarId={av.id} size={44} />
                   {avatar === av.id && (

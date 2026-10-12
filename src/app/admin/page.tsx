@@ -287,7 +287,7 @@ export default function AdminPage() {
         <button onClick={() => setTab('users')} className={tabClass('users')}>{t.usersTab} ({users.length})</button>
         {currentUserIsAdmin && (
           <button onClick={() => { setTab('security'); loadSecurity() }} className={tabClass('security')}>
-            🔒 Security
+            {t.securityTab}
           </button>
         )}
       </div>
@@ -328,7 +328,7 @@ export default function AdminPage() {
                       </button>
                       <button onClick={() => setMovingPost({ id: post.id, categoryId: post.category_id })}
                         className="px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg text-purple-600 hover:bg-purple-100 transition-colors">
-                        Move
+                        {t.moveBtn}
                       </button>
                       <button onClick={() => deletePost(post.id)}
                         className="px-3 py-1.5 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">

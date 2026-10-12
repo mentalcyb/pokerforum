@@ -173,7 +173,7 @@ export default function CategoryPage() {
                 disabled={page <= 0 || loading}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                ← Prev
+                ← {t.prevPage}
               </button>
               <span className="text-xs text-gray-400">{page + 1} / {totalPages}</span>
               <button
@@ -181,7 +181,7 @@ export default function CategoryPage() {
                 disabled={page >= totalPages - 1 || loading}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                Next →
+                {t.nextPage} →
               </button>
             </div>
           )}

@@ -77,6 +77,12 @@ export const translations = {
     // category page
     categoryNotFound: 'კატეგორია ვერ მოიძებნა',
     postNotFound: 'პოსტი ვერ მოიძებნა',
+    prevPage: 'წინა',
+    securityTab: '🔒 უსაფრთხოება',
+    moveBtn: 'გადატანა',
+    avatarNames: { spade: 'ყვავი', heart: 'გული', diamond: 'აგური', club: 'ჯვარი', chip: 'ჩიპი', ace: 'ტუზი', ninja: 'ნინძა' } as Record<string, string>,
+    nextPage: 'შემდეგი',
+    loadEarlierReplies: 'ადრინდელი პასუხების ჩატვირთვა',
     userNotFound: 'მომხმარებელი ვერ მოიძებნა',
     // admin panel
     adminPanel: 'ადმინ პანელი',
@@ -379,6 +385,12 @@ export const translations = {
     // category page
     categoryNotFound: 'Category not found',
     postNotFound: 'Post not found',
+    prevPage: 'Prev',
+    securityTab: '🔒 Security',
+    moveBtn: 'Move',
+    avatarNames: { spade: 'Spade', heart: 'Heart', diamond: 'Diamond', club: 'Club', chip: 'Chip', ace: 'Ace', ninja: 'Ninja' } as Record<string, string>,
+    nextPage: 'Next',
+    loadEarlierReplies: 'Load earlier replies',
     userNotFound: 'User not found',
     // admin panel
     adminPanel: 'Admin Panel',
