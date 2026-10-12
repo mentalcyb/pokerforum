@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useApp } from '@/contexts/AppContext'
@@ -37,6 +37,31 @@ function writePref(key: string, value: boolean) {
 }
 
 /** Short two-tone chime, no audio file needed. */
+/** Quick rattle of chips for the pot going to the winner. */
+function playChips() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ac = new Ctx()
+    for (let i = 0; i < 6; i++) {
+      const osc = ac.createOscillator()
+      const gain = ac.createGain()
+      osc.type = 'triangle'
+      osc.frequency.value = 2200 + Math.random() * 1600
+      osc.connect(gain)
+      gain.connect(ac.destination)
+      const t0 = ac.currentTime + 0.55 + i * 0.06 + Math.random() * 0.02
+      gain.gain.setValueAtTime(0.0001, t0)
+      gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.005)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05)
+      osc.start(t0)
+      osc.stop(t0 + 0.06)
+    }
+    setTimeout(() => ac.close(), 1500)
+  } catch { /* audio unavailable */ }
+}
+
+const CHIP_COLORS = ['#ef4444', '#2563eb', '#16a34a', '#111827', '#f59e0b']
+
 function playChime() {
   try {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
@@ -215,6 +240,28 @@ export default function HomeGameTablePage() {
 
   // put the page title back when leaving the table
   useEffect(() => () => { if (originalTitle.current !== null) document.title = originalTitle.current }, [])
+
+  // Winning-pot animation: chips fly from the middle to each winner when a hand ends
+  const [winAnim, setWinAnim] = useState<{ key: string; items: { seat: number; amount: number }[] } | null>(null)
+  const lastAnimKey = useRef<string | null>(null)
+  const animTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resultHandNo = s?.phase === 'handOver' ? s.lastResult?.handNo ?? null : null
+  useEffect(() => {
+    if (resultHandNo === null || !s?.lastResult) return
+    const key = `${view!.id}-${resultHandNo}`
+    // first load of the page: don't replay an old hand's animation
+    if (lastAnimKey.current === null && view!.serverTime - (s.nextHandAt ?? 0) > -1000) { lastAnimKey.current = key; return }
+    if (key === lastAnimKey.current) return
+    lastAnimKey.current = key
+    const totals = new Map<number, number>()
+    for (const pot of s.lastResult.pots) for (const w of pot.winners) totals.set(w.seat, (totals.get(w.seat) ?? 0) + w.amount)
+    setWinAnim({ key, items: Array.from(totals, ([seat, amount]) => ({ seat, amount })) })
+    if (sound) playChips()
+    if (animTimer.current) clearTimeout(animTimer.current)
+    animTimer.current = setTimeout(() => setWinAnim(null), 3200)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultHandNo])
+  useEffect(() => () => { if (animTimer.current) clearTimeout(animTimer.current) }, [])
 
   // keep the chat scrolled to the newest message
   const chatCount = s?.chat?.length ?? 0
@@ -399,6 +446,24 @@ export default function HomeGameTablePage() {
               </div>
             ) : null)}
 
+            {/* Winning pot: chips fly to the winner(s), then "+amount" pops up */}
+            {winAnim && winAnim.items.map(w => {
+              const target = seatPos(w.seat, { x: 44, y: 42 })
+              return (
+                <Fragment key={`${winAnim.key}-${w.seat}`}>
+                  {[0, 1, 2, 3, 4, 5].map(k => (
+                    <div key={k} aria-hidden
+                      className="pf-chip absolute z-20 w-5 h-5 -ml-2.5 -mt-2.5 rounded-full border-[3px] border-dashed border-white/80 shadow-md pointer-events-none"
+                      style={{ background: CHIP_COLORS[k % CHIP_COLORS.length], animationDelay: `${k * 70}ms`, ['--x' as string]: target.left, ['--y' as string]: target.top } as React.CSSProperties} />
+                  ))}
+                  <div className="pf-win-amount absolute z-30 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-sm sm:text-base font-extrabold shadow-lg pointer-events-none whitespace-nowrap"
+                    style={{ left: target.left, top: target.top }}>
+                    +{w.amount.toLocaleString()}
+                  </div>
+                </Fragment>
+              )
+            })}
+
             {/* Seats */}
             {s.seats.map((p, i) => {
               const pos = seatPos(i, { x: 44, y: 42 })
@@ -431,6 +496,7 @@ export default function HomeGameTablePage() {
                   </div>
                   <div className={`relative z-10 w-[5.5rem] sm:w-28 rounded-xl px-2 py-1.5 text-center shadow-lg border-2 transition-colors
                     ${isTurn ? 'border-amber-400 bg-gray-900' : winners.has(i) ? 'border-emerald-300 bg-gray-900' : 'border-gray-700 bg-gray-900/90'}
+                    ${winAnim?.items.some(w => w.seat === i) ? 'pf-winner-glow' : ''}
                     ${p.folded || p.sittingOut ? 'opacity-55' : ''}`}>
                     <div className="flex items-center justify-center gap-1">
                       <PokerAvatar avatarId={p.avatar} size={16} />

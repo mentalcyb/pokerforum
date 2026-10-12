@@ -7,3 +7,43 @@
 body {
   @apply bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200;
 }
+
+/* ── Poker table: winning-pot animation ─────────────────────────────────── */
+@keyframes pf-chip-fly {
+  0%   { left: 50%; top: 50%; opacity: 0; transform: scale(0.6); }
+  12%  { opacity: 1; transform: scale(1); }
+  85%  { opacity: 1; }
+  100% { left: var(--x); top: var(--y); opacity: 0; transform: scale(0.8); }
+}
+.pf-chip {
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  animation: pf-chip-fly 900ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+
+@keyframes pf-win-pop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%, -50%) translateY(-34px) scale(1.15); }
+  75%  { opacity: 1; transform: translate(-50%, -50%) translateY(-48px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-62px) scale(1); }
+}
+.pf-win-amount {
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: pf-win-pop 2.3s ease-out 0.75s forwards;
+}
+
+@keyframes pf-winner-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  50%      { box-shadow: 0 0 20px 6px rgba(52, 211, 153, 0.8); }
+}
+.pf-winner-glow {
+  animation: pf-winner-glow 0.9s ease-in-out 0.7s 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-chip { display: none; }
+  .pf-win-amount { animation: none; opacity: 1; transform: translate(-50%, -50%) translateY(-40px); }
+  .pf-winner-glow { animation: none; box-shadow: 0 0 12px 3px rgba(52, 211, 153, 0.7); }
+}
