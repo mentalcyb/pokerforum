@@ -63,3 +63,20 @@ export function bestScore(cards: Card[]): HandScore {
           }
   return best!
 }
+
+/**
+ * Category index (see HAND_CATEGORIES) of the best hand made from 2–7 cards.
+ * With fewer than five cards only pairs/trips/quads can be made.
+ */
+export function handCategory(cards: Card[]): number | null {
+  if (cards.length < 2) return null
+  if (cards.length >= 5) return bestScore(cards)[0]
+  const counts = new Map<number, number>()
+  for (const c of cards) counts.set(rankValue(c), (counts.get(rankValue(c)) ?? 0) + 1)
+  const sizes = Array.from(counts.values()).sort((a, b) => b - a)
+  if (sizes[0] === 4) return 7
+  if (sizes[0] === 3) return 3
+  if (sizes[0] === 2 && sizes[1] === 2) return 2
+  if (sizes[0] === 2) return 1
+  return 0
+}

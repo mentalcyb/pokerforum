@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { homeGamesFetch } from '@/lib/poker/client'
 import type { TableView } from '@/lib/poker/server'
 import type { GameState, LogEntry, Player } from '@/lib/poker/engine'
+import { handCategory } from '@/lib/poker/evaluate'
 import PlayingCard from '@/components/poker/PlayingCard'
 import PokerAvatar from '@/components/PokerAvatar'
 
@@ -21,6 +22,39 @@ function potTotal(s: GameState) {
 
 function eligibleCount(s: GameState) {
   return s.seats.filter(p => p && !p.sittingOut && !p.leaving && p.stack > 0).length
+}
+
+function readPref(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? fallback : v === '1'
+  } catch { return fallback }
+}
+
+function writePref(key: string, value: boolean) {
+  try { localStorage.setItem(key, value ? '1' : '0') } catch { /* storage unavailable */ }
+}
+
+/** Short two-tone chime, no audio file needed. */
+function playChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ac = new Ctx()
+    ;[880, 1320].forEach((freq, i) => {
+      const osc = ac.createOscillator()
+      const gain = ac.createGain()
+      osc.frequency.value = freq
+      osc.connect(gain)
+      gain.connect(ac.destination)
+      const t0 = ac.currentTime + i * 0.14
+      gain.gain.setValueAtTime(0.0001, t0)
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18)
+      osc.start(t0)
+      osc.stop(t0 + 0.2)
+    })
+    setTimeout(() => ac.close(), 800)
+  } catch { /* audio unavailable */ }
 }
 
 function logLine(e: LogEntry, t: T): string {
@@ -54,7 +88,15 @@ export default function HomeGameTablePage() {
   const [now, setNow] = useState(() => Date.now())
   const [raiseTo, setRaiseTo] = useState(0)
   const [copied, setCopied] = useState(false)
-  const [tab, setTab] = useState<'log' | 'ledger'>('log')
+  const [tab, setTab] = useState<'chat' | 'log' | 'ledger'>('chat')
+  const [fourColor, setFourColor] = useState(false)
+  const [sound, setSound] = useState(true)
+  const [chatText, setChatText] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
+  const [settingsForm, setSettingsForm] = useState({ smallBlind: '', bigBlind: '', turnSeconds: '' })
+  const chatEnd = useRef<HTMLDivElement>(null)
+  const wasMyTurn = useRef(false)
+  const originalTitle = useRef<string | null>(null)
 
   const offset = useRef(0) // server clock − client clock
   const lastTick = useRef('')
@@ -147,6 +189,28 @@ export default function HomeGameTablePage() {
     }
   }, [s, serverNow, view, send])
 
+  // personal display preferences
+  useEffect(() => {
+    setFourColor(readPref('poker-4color', false))
+    setSound(readPref('poker-sound', true))
+  }, [])
+
+  // alert the player when it becomes their turn: chime + tab title
+  const isMyTurnNow = !!s && s.phase === 'playing' && view!.mySeat >= 0 && s.toAct === view!.mySeat
+  useEffect(() => {
+    if (isMyTurnNow && !wasMyTurn.current && sound) playChime()
+    wasMyTurn.current = isMyTurnNow
+    if (originalTitle.current === null) originalTitle.current = document.title
+    document.title = isMyTurnNow ? t.hgTurnAlert : originalTitle.current
+  }, [isMyTurnNow, sound, t])
+
+  // put the page title back when leaving the table
+  useEffect(() => () => { if (originalTitle.current !== null) document.title = originalTitle.current }, [])
+
+  // keep the chat scrolled to the newest message
+  const chatCount = s?.chat?.length ?? 0
+  useEffect(() => { chatEnd.current?.scrollIntoView({ block: 'nearest' }) }, [chatCount, tab])
+
   // reset the raise amount whenever the betting situation changes
   const me: Player | null = view && view.mySeat >= 0 ? view.state.seats[view.mySeat] : null
   const minTo = s && me ? Math.min(s.currentBet + s.minRaise, me.bet + me.stack) : 0
@@ -175,6 +239,37 @@ export default function HomeGameTablePage() {
   const timeLeft = s.deadline ? Math.max(0, s.deadline - serverNow) : 0
   const timePct = s.deadline ? Math.min(100, (timeLeft / (view.config.turnSeconds * 1000)) * 100) : 0
   const potInMiddle = s.seats.reduce((sum, p) => sum + (p ? p.committed - p.bet : 0), 0)
+  const myHand = me && !me.folded && view.myCards.length === 2 ? handCategory([...view.myCards, ...s.board]) : null
+
+  function toggleFourColor() { setFourColor(v => { writePref('poker-4color', !v); return !v }) }
+  function toggleSound() { setSound(v => { writePref('poker-sound', !v); return !v }) }
+
+  function sendChat(e: React.FormEvent) {
+    e.preventDefault()
+    const text = chatText.trim()
+    if (!text) return
+    setChatText('')
+    send('chat', { text })
+  }
+
+  function openSettings() {
+    setSettingsForm({
+      smallBlind: String(view!.config.smallBlind),
+      bigBlind: String(view!.config.bigBlind),
+      turnSeconds: String(view!.config.turnSeconds),
+    })
+    setShowSettings(v => !v)
+  }
+
+  async function saveSettings(e: React.FormEvent) {
+    e.preventDefault()
+    await send('settings', {
+      smallBlind: Number(settingsForm.smallBlind),
+      bigBlind: Number(settingsForm.bigBlind),
+      turnSeconds: Number(settingsForm.turnSeconds),
+    })
+    setShowSettings(false)
+  }
 
   function seatPos(i: number, r: { x: number; y: number }) {
     const angle = ((90 + ((i - base) * 360) / n) * Math.PI) / 180
@@ -204,6 +299,18 @@ export default function HomeGameTablePage() {
             {' · '}<span className="text-amber-700 dark:text-amber-400">🪙 {t.hgPlayChips}</span>
           </div>
         </div>
+        <div className="flex items-center gap-1.5">
+          <button onClick={toggleFourColor} title={t.hg4Color}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold ${fourColor ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>
+            <span className={fourColor ? '' : 'text-gray-900 dark:text-gray-100'}>♠</span>
+            <span className="text-red-500">♥</span>
+            <span className={fourColor ? 'text-blue-200' : 'text-red-500'}>♦</span>
+            <span className={fourColor ? 'text-green-200' : 'text-gray-900 dark:text-gray-100'}>♣</span>
+            <span className="ml-1 hidden sm:inline">{t.hg4Color}</span>
+          </button>
+          <button onClick={toggleSound} title={t.hgSound}
+            className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs">{sound ? '🔔' : '🔕'}</button>
+        </div>
         {!view.closed && (
           <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2 max-w-full">
             <span className="text-xs text-gray-500 flex-shrink-0">{t.hgInvite}:</span>
@@ -230,8 +337,8 @@ export default function HomeGameTablePage() {
                   {t.hgPotLabel}: {pot.toLocaleString()}
                 </div>
               )}
-              <div className="flex gap-1 sm:gap-1.5 min-h-[3.5rem]">
-                {s.board.map((c, i) => <PlayingCard key={i} card={c} size="md" />)}
+              <div className="flex gap-1 sm:gap-2 min-h-[4.5rem] sm:min-h-[5.5rem]">
+                {s.board.map((c, i) => <PlayingCard key={i} card={c} size="lg" fourColor={fourColor} />)}
               </div>
               {s.phase === 'handOver' && s.lastResult && (
                 <div className="px-3 py-1.5 rounded-lg bg-black/55 text-amber-300 text-xs sm:text-sm font-semibold text-center max-w-[80%]">
@@ -283,10 +390,10 @@ export default function HomeGameTablePage() {
               const myOwn = isMe && view.myCards.length > 0 && !p.folded
               return (
                 <div key={i} className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center" style={pos}>
-                  <div className="flex -space-x-3 mb-[-10px] z-0 min-h-[1.5rem]">
-                    {shown ? shown.map(c => <PlayingCard key={c} card={c} size="sm" />)
-                      : myOwn ? view.myCards.map(c => <PlayingCard key={c} card={c} size="sm" />)
-                      : showBacks ? [0, 1].map(k => <PlayingCard key={k} size="sm" />) : null}
+                  <div className="flex -space-x-4 mb-[-14px] z-0 min-h-[1.5rem]">
+                    {shown ? shown.map(c => <PlayingCard key={c} card={c} size="md" fourColor={fourColor} />)
+                      : myOwn ? view.myCards.map(c => <PlayingCard key={c} card={c} size="md" fourColor={fourColor} />)
+                      : showBacks ? [0, 1].map(k => <PlayingCard key={k} size="md" />) : null}
                   </div>
                   <div className={`relative z-10 w-[5.5rem] sm:w-28 rounded-xl px-2 py-1.5 text-center shadow-lg border-2 transition-colors
                     ${isTurn ? 'border-amber-400 bg-gray-900' : winners.has(i) ? 'border-emerald-300 bg-gray-900' : 'border-gray-700 bg-gray-900/90'}
@@ -299,6 +406,11 @@ export default function HomeGameTablePage() {
                     {(p.folded || p.sittingOut || p.allIn) && (
                       <div className="text-[9px] uppercase tracking-wide text-gray-400">
                         {p.allIn ? t.hgAllIn : p.sittingOut ? t.hgSittingOut : t.hgFolded}
+                      </div>
+                    )}
+                    {shown && s.board.length >= 3 && (
+                      <div className="mt-0.5 text-[10px] sm:text-[11px] font-semibold text-amber-300 truncate">
+                        {t.hgHandNames[handCategory([...shown, ...s.board]) ?? 0]}
                       </div>
                     )}
                     {isTurn && s.deadline && (
@@ -325,7 +437,12 @@ export default function HomeGameTablePage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-amber-600 dark:text-amber-400">⏱ {t.hgYourTurn} · {Math.ceil(timeLeft / 1000)}{t.hgSeconds}</span>
-                  <div className="flex gap-1">{view.myCards.map(c => <PlayingCard key={c} card={c} size="md" />)}</div>
+                  <div className="flex items-center gap-3">
+                    {myHand !== null && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 text-right">{t.hgYourHand}:<br /><span className="text-sm font-bold text-amber-600 dark:text-amber-400">{t.hgHandNames[myHand]}</span></div>
+                  )}
+                    <div className="flex gap-1">{view.myCards.map(c => <PlayingCard key={c} card={c} size="lg" fourColor={fourColor} />)}</div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button onClick={() => send('fold')} disabled={busy} className={`${btn} bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-300`}>{t.hgFold}</button>
@@ -365,7 +482,12 @@ export default function HomeGameTablePage() {
                     className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgStart}</button>
                 )}
                 {view.myCards.length > 0 && me && !me.folded && (
-                  <div className="flex gap-1 mr-2">{view.myCards.map(c => <PlayingCard key={c} card={c} size="md" />)}</div>
+                  <div className="flex items-center gap-3 mr-2">
+                    <div className="flex gap-1">{view.myCards.map(c => <PlayingCard key={c} card={c} size="lg" fourColor={fourColor} />)}</div>
+                    {myHand !== null && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 ">{t.hgYourHand}:<br /><span className="text-sm font-bold text-amber-600 dark:text-amber-400">{t.hgHandNames[myHand]}</span></div>
+                  )}
+                  </div>
                 )}
                 {me && me.stack === 0 && !(s.phase === 'playing' && me.inHand && !me.folded) && (
                   <button onClick={() => send('rebuy')} disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgRebuy(view.config.startingStack)}</button>
@@ -388,8 +510,47 @@ export default function HomeGameTablePage() {
                     ? <button onClick={() => send('resume')} disabled={busy} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.hgResume}</button>
                     : <button onClick={() => send('pause')} disabled={busy} className={`${btn} border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300`}>{t.hgPause}</button>}
                 {s.paused && <span className="text-xs text-gray-500">{t.hgPausedNote}</span>}
+                <button onClick={openSettings} className={`${btn} border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300`}>⚙️ {t.hgSettings}</button>
                 <button onClick={() => { if (confirm(t.hgConfirmClose)) send('close') }} disabled={busy || s.phase === 'playing'}
                   className="ml-auto text-xs text-red-600 hover:underline disabled:opacity-40">{t.hgCloseTable}</button>
+              </div>
+            )}
+
+            {view.isHost && !view.closed && showSettings && (
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 grid gap-4 sm:grid-cols-2">
+                <form onSubmit={saveSettings} className="space-y-2">
+                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">{t.hgSettings}</div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    {([
+                      ['smallBlind', 'SB'],
+                      ['bigBlind', 'BB'],
+                      ['turnSeconds', `${t.hgTurnTime} (${t.hgSeconds})`],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="text-[11px] text-gray-500">
+                        {label}
+                        <input type="number" min={1} value={settingsForm[key]}
+                          onChange={e => setSettingsForm(f => ({ ...f, [key]: e.target.value }))}
+                          className="block w-24 mt-0.5 px-2 py-1 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                      </label>
+                    ))}
+                    <button type="submit" disabled={busy || s.phase === 'playing'} className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>{t.save}</button>
+                  </div>
+                  <p className="text-[11px] text-gray-400">{t.hgSettingsHint}</p>
+                </form>
+                <div>
+                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{t.hgPlayersList}</div>
+                  <div className="space-y-1">
+                    {s.seats.map((p, i) => p && (
+                      <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate text-gray-800 dark:text-gray-200">{p.name} <span className="text-xs text-gray-400">{p.stack.toLocaleString()}</span></span>
+                        {i !== view.mySeat && (
+                          <button onClick={() => { if (confirm(t.hgConfirmKick(p.name))) send('kick', { seat: i }) }} disabled={busy}
+                            className="text-xs font-semibold text-red-600 hover:underline">{t.hgKick}</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -401,14 +562,34 @@ export default function HomeGameTablePage() {
         {/* Side panel: history & settlement */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden h-fit">
           <div className="flex border-b border-gray-100 dark:border-gray-800">
-            {(['log', 'ledger'] as const).map(k => (
+            {(['chat', 'log', 'ledger'] as const).map(k => (
               <button key={k} onClick={() => setTab(k)}
                 className={`flex-1 px-3 py-2.5 text-xs font-semibold ${tab === k ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-500'}`}>
-                {k === 'log' ? t.hgLog : t.hgLedger}
+                {k === 'chat' ? `💬 ${t.hgChat}` : k === 'log' ? t.hgLog : t.hgLedger}
               </button>
             ))}
           </div>
-          {tab === 'log' ? (
+          {tab === 'chat' ? (
+            <div className="flex flex-col h-[420px]">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5 text-sm">
+                {(s.chat ?? []).length === 0 && <p className="text-xs text-gray-400 text-center mt-6">{t.hgNoChat}</p>}
+                {(s.chat ?? []).map((m, i) => (
+                  <div key={i} className="break-words">
+                    <span className={`font-semibold ${m.userId === me?.userId ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600'}`}>{m.name}:</span>{' '}
+                    <span className="text-gray-800 dark:text-gray-200">{m.text}</span>
+                  </div>
+                ))}
+                <div ref={chatEnd} />
+              </div>
+              {(view.mySeat >= 0 || view.isHost) && !view.closed && (
+                <form onSubmit={sendChat} className="flex gap-1.5 p-2 border-t border-gray-100 dark:border-gray-800">
+                  <input value={chatText} onChange={e => setChatText(e.target.value)} maxLength={200} placeholder={t.hgChatPlaceholder}
+                    className="flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  <button type="submit" disabled={!chatText.trim()} className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-50">{t.hgSend}</button>
+                </form>
+              )}
+            </div>
+          ) : tab === 'log' ? (
             <div className="max-h-[420px] overflow-y-auto px-4 py-3 space-y-1 text-xs">
               {s.log.slice().reverse().map((e, i) => (
                 <div key={i} className={e.kind === 'win' ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : e.kind === 'street' ? 'text-gray-400 pt-1' : 'text-gray-700 dark:text-gray-300'}>

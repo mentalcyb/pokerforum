@@ -3,9 +3,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   act, Ctx, GameError, GameState, initialState, leave, rebuy, Secret, sit, startGame, startHand,
-  TableConfig, tick, Action,
+  TableConfig, tick, Action, kick, addChat,
 } from '../engine'
-import { bestScore, compareScores, score5 } from '../evaluate'
+import { bestScore, compareScores, score5, handCategory } from '../evaluate'
 
 const cfg: TableConfig = { smallBlind: 5, bigBlind: 10, startingStack: 1000, maxSeats: 6, turnSeconds: 30 }
 
@@ -353,4 +353,40 @@ test('random games keep chip totals and invariants intact', () => {
     const bought = Object.values(s.ledger).reduce((sum, e) => sum + e.boughtIn - e.cashedOut, 0)
     assert.equal(inPlay, bought)
   }
+})
+
+// ─── host tools, chat, hand names ──────────────────────────────────────────
+
+test('host can kick a player mid-hand; they fold, are cashed out and cannot sit again', () => {
+  let r = startGame(table(['A', 'B', 'C']), { deck: [], hands: {} }, ctx())
+  r = kick(r.state, r.secret, ctx(), 2) // C is in the big blind, not to act
+  assert.equal(r.state.seats[2]!.folded, true)
+  r = play(r, 0, { type: 'fold' }) // B wins, hand ends, C removed
+  assert.equal(r.state.seats[2], null)
+  assert.equal(r.state.ledger['u-C'].cashedOut, 990)
+  assert.ok(r.state.log.some(e => e.kind === 'kick' && e.name === 'C'))
+  assert.throws(() => sit(r.state, cfg, 2, { userId: 'u-C', name: 'C', avatar: null }), (e: GameError) => e.code === 'kicked')
+  assert.equal(totalChips(r.state) + r.state.ledger['u-C'].cashedOut, 3000)
+})
+
+test('chat keeps recent messages, trims text and rate-limits', () => {
+  let s = table(['A', 'B'])
+  s = addChat(s, { userId: 'u-A', name: 'A' }, '  hello   there  ', 1000)
+  assert.equal(s.chat!.at(-1)!.text, 'hello there')
+  assert.throws(() => addChat(s, { userId: 'u-A', name: 'A' }, 'again', 1200), (e: GameError) => e.code === 'too_fast')
+  assert.throws(() => addChat(s, { userId: 'u-B', name: 'B' }, '   ', 1200), (e: GameError) => e.code === 'empty_message')
+  for (let k = 0; k < 60; k++) s = addChat(s, { userId: 'u-B', name: 'B' }, `m${k}`, 2000 + k * 1000)
+  assert.equal(s.chat!.length, 50)
+  assert.equal(s.chat!.at(-1)!.text, 'm59')
+  assert.equal(addChat(s, { userId: 'u-A', name: 'A' }, 'x'.repeat(500), 100000).chat!.at(-1)!.text.length, 200)
+})
+
+test('hand category works from two to seven cards', () => {
+  assert.equal(handCategory(['As', 'Ad']), 1)
+  assert.equal(handCategory(['As', 'Kd']), 0)
+  assert.equal(handCategory(['As', 'Ad', 'Ah', 'Kc']), 3)
+  assert.equal(handCategory(['9s', '8d', '7h', '6c', '5s']), 4)
+  assert.equal(handCategory(['9s', '8d', '7h', '6c', '5s', 'Ks', '2s']), 4)
+  assert.equal(handCategory(['As', 'Ks', '7s', '6s', '2s', 'Kd', 'Kh']), 5)
+  assert.equal(handCategory(['As']), null)
 })

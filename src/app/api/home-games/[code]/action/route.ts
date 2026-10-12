@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import {
-  act, GameError, leave, rebuy, seatOf, setPaused, setSittingOut, sit, startGame, tick,
+  act, addChat, GameError, kick, leave, rebuy, seatOf, setPaused, setSittingOut, sit, startGame, tick,
+  TableConfig, validateConfig,
 } from '@/lib/poker/engine'
 import { getViewer, loadTable, mutateTable, viewFor } from '@/lib/poker/server'
 
@@ -10,7 +11,7 @@ export const fetchCache = 'force-no-store'
 
 const PLAYER_ACTIONS = ['fold', 'check', 'call', 'raise'] as const
 // Any seated player may deal the first hand; pausing stays with the host.
-const HOST_ACTIONS = ['pause', 'resume', 'close'] as const
+const HOST_ACTIONS = ['pause', 'resume', 'close', 'kick', 'settings'] as const
 
 function err(code: string, status = 400) {
   return NextResponse.json({ error: code }, { status })
@@ -24,6 +25,33 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
 
     // "tick" only advances timers that have already run out, so anyone watching may send it.
     if (action !== 'tick' && !viewer) return err('unauthorized', 401)
+
+    if (action === 'settings') {
+      // Blinds and timer change between hands only, so a running hand keeps its rules.
+      const loaded = await loadTable(params.code)
+      if (!loaded) return err('table_not_found', 404)
+      const { row } = loaded
+      if (row.host_id !== viewer!.id) return err('host_only', 403)
+      if (row.closed) return err('table_closed')
+      if (row.state.phase === 'playing') return err('hand_in_progress')
+      const cfg: TableConfig = {
+        ...row.config,
+        smallBlind: Number(body.smallBlind ?? row.config.smallBlind),
+        bigBlind: Number(body.bigBlind ?? row.config.bigBlind),
+        turnSeconds: Number(body.turnSeconds ?? row.config.turnSeconds),
+      }
+      const invalid = validateConfig(cfg)
+      if (invalid) return err(invalid)
+      const { data, error } = await createAdminClient()
+        .from('poker_tables')
+        .update({ config: cfg, version: row.version + 1, updated_at: new Date().toISOString() })
+        .eq('id', row.id)
+        .eq('version', row.version)
+        .select('id')
+      if (error) throw error
+      if (!data?.length) return err('busy')
+      return NextResponse.json(viewFor({ ...row, config: cfg, version: row.version + 1 }, loaded.secret, viewer!.id))
+    }
 
     if (action === 'close') {
       const loaded = await loadTable(params.code)
@@ -62,6 +90,14 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         case 'start':
           if (mySeat < 0 && !isHost) throw new GameError('not_seated')
           return startGame(state, secret, ctx)
+        case 'kick': {
+          const target = Number(body.seat)
+          if (target === mySeat) throw new GameError('cannot_kick_self')
+          return kick(state, secret, ctx, target)
+        }
+        case 'chat':
+          if (mySeat < 0 && !isHost) throw new GameError('not_seated')
+          return { state: addChat(state, { userId: viewer!.id, name: viewer!.name }, String(body.text ?? ''), ctx.now) }
         case 'pause':
           return { state: setPaused(state, true) }
         case 'resume':
