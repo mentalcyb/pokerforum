@@ -182,6 +182,26 @@ export default function HomeGamesLobby() {
           </div>
         </>
       )}
+      {/* How it works + FAQ: helps new visitors (and search engines) understand the page */}
+      <section className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+          <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t.hgHowTitle}</h2>
+          <ol className="space-y-2 text-sm text-gray-600 dark:text-gray-400 list-decimal list-inside">
+            {t.hgHowSteps.map((step, i) => <li key={i}>{step}</li>)}
+          </ol>
+        </div>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+          <h2 className="font-semibold text-gray-900 dark:text-white mb-3">{t.hgFaqTitle}</h2>
+          <dl className="space-y-2.5 text-sm">
+            {t.hgFaq.map((f, i) => (
+              <div key={i}>
+                <dt className="font-medium text-gray-800 dark:text-gray-200">{f.q}</dt>
+                <dd className="text-gray-600 dark:text-gray-400">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
     </div>
   )
 }

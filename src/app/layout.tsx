@@ -5,6 +5,8 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
+  // makes relative canonical/OG URLs absolute
+  metadataBase: new URL('https://pokerforum.ge'),
   title: 'პოკერის ფორუმი - ქართული პოკერის საზოგადოება | pokerforum.ge',
   description: 'ქართული პოკერის ფორუმი - განიხილე სტრატეგია, ტურნირები და სიახლეები. საქართველოს უმსხვილესი პოკერის საზოგადოება.',
   keywords: 'პოკერის ფორუმი, ქართული პოკერი, poker forum georgia, პოკერი საქართველო',
