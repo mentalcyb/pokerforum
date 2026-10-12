@@ -461,7 +461,12 @@ export default function HomeGameTablePage() {
 
           {/* Action bar */}
           <div className="mt-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4">
-            {view.mySeat < 0 ? (
+            {view.closed ? (
+              <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                <span>{t.hgClosed}</span>
+                <Link href="/home-games" className={`${btn} bg-brand-600 hover:bg-brand-700 text-white`}>+ {t.hgNewTable}</Link>
+              </div>
+            ) : view.mySeat < 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                 {loggedIn ? (tourRunning ? t.hgTournamentRunning : t.hgSpectating) : <>{t.hgLoginRequired} <Link href="/auth?mode=login" className="text-brand-600 font-medium">{t.login}</Link></>}
               </p>
