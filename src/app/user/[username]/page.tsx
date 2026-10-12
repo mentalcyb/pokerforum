@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
+import { catName, formatDate } from '@/lib/i18n'
 import Link from 'next/link'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
@@ -21,11 +22,11 @@ interface Post {
   created_at: string
   reply_count: number
   view_count: number
-  categories: { name: string } | null
+  categories: { name: string; name_en?: string | null } | null
 }
 
 export default function UserProfilePage() {
-  const { t } = useApp()
+  const { t, lang } = useApp()
   const params = useParams()
   const username = decodeURIComponent(params.username as string)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -59,7 +60,7 @@ export default function UserProfilePage() {
 
       const { data: ps, error: psErr } = await supabase
         .from('posts')
-        .select('id, title, created_at, reply_count, view_count, categories(name)')
+        .select('id, title, created_at, reply_count, view_count, categories(*)')
         .eq('user_id', prof.id)
         .order('created_at', { ascending: false })
         .limit(20)
@@ -100,7 +101,7 @@ export default function UserProfilePage() {
     if (hrs < 24) return `${hrs} ${t.hr} ${t.ago}`
     const days = Math.floor(hrs / 24)
     if (days < 30) return `${days} ${t.day} ${t.ago}`
-    return new Date(dateStr).toLocaleDateString()
+    return formatDate(new Date(dateStr), t)
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.loading}</div>
@@ -109,9 +110,9 @@ export default function UserProfilePage() {
       <ErrorState message={pageError} retryLabel={t.retry} onRetry={load} />
     </div>
   )
-  if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.categoryNotFound}</div>
+  if (!profile) return <div className="flex items-center justify-center min-h-screen text-gray-400">{t.userNotFound}</div>
 
-  const joinDate = new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  const joinDate = formatDate(new Date(profile.created_at), t)
   const isOwnProfile = currentUserId === profile.id
   const canMessage = !!currentUserId && !isOwnProfile
 
@@ -207,7 +208,7 @@ export default function UserProfilePage() {
           <Link key={post.id} href={`/post/${post.id}`}
             className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors last:border-0">
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-brand-600 mb-0.5">{post.categories?.name}</div>
+              <div className="text-xs text-brand-600 mb-0.5">{catName(post.categories, lang)}</div>
               <div className="font-medium text-gray-900 dark:text-white text-sm truncate">{post.title}</div>
               <div className="text-xs text-gray-400 mt-0.5">{timeAgo(post.created_at)}</div>
             </div>

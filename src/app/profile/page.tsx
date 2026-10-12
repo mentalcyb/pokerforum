@@ -6,6 +6,7 @@ import { useApp } from '@/contexts/AppContext'
 import Link from 'next/link'
 import PokerAvatar, { AVATARS, AvatarId } from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
+import { formatDate } from '@/lib/i18n'
 
 export default function ProfilePage() {
   const { t } = useApp()
@@ -14,7 +15,7 @@ export default function ProfilePage() {
   const [newUsername, setNewUsername] = useState('')
   const [avatar, setAvatar] = useState<AvatarId>('spade')
   const [signature, setSignature] = useState('')
-  const [joinDate, setJoinDate] = useState('')
+  const [joinDate, setJoinDate] = useState<Date | null>(null)
   const [postCount, setPostCount] = useState(0)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,11 +46,7 @@ export default function ProfilePage() {
         setAvatar((profile.avatar as AvatarId) || 'spade')
         setSignature(profile.signature || '')
         if (profile.created_at) {
-          const d = new Date(profile.created_at)
-          const day = d.getDate()
-          const year = d.getFullYear()
-          const months = ['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი']
-          setJoinDate(`${day} ${months[d.getMonth()]} ${year}`)
+          setJoinDate(new Date(profile.created_at))
         }
       }
       setPostCount(count ?? 0)
@@ -73,13 +70,13 @@ export default function ProfilePage() {
     setSaving(true); setError(null)
 
     const trimmed = newUsername.trim()
-    if (!trimmed) { setUsernameError('Username cannot be empty'); setSaving(false); return }
-    if (trimmed.length < 3) { setUsernameError('Username must be at least 3 characters'); setSaving(false); return }
+    if (!trimmed) { setUsernameError(t.usernameEmpty); setSaving(false); return }
+    if (trimmed.length < 3) { setUsernameError(t.usernameTooShort); setSaving(false); return }
 
     // Check username taken (only if changed)
     if (trimmed !== username) {
       const { data: existing } = await supabase.from('profiles').select('id').eq('username', trimmed).neq('id', userId).single()
-      if (existing) { setUsernameError('Username already taken'); setSaving(false); return }
+      if (existing) { setUsernameError(t.usernameTaken); setSaving(false); return }
     }
 
     const { error: err } = await supabase
@@ -130,7 +127,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
             <div className="text-xs text-gray-400 mb-0.5">📅 {t.joinDate}</div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">{joinDate || '—'}</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">{joinDate ? formatDate(joinDate, t) : '—'}</div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
             <div className="text-xs text-gray-400 mb-0.5">📝 {t.postCountLabel}</div>
@@ -173,7 +170,7 @@ export default function ProfilePage() {
                       ? 'ring-2 ring-brand-600 ring-offset-2 dark:ring-offset-gray-900 scale-105'
                       : 'hover:scale-105 opacity-70 hover:opacity-100'
                   }`}
-                  title={av.label}
+                  title={t.avatarNames[av.id] ?? av.label}
                 >
                   <PokerAvatar avatarId={av.id} size={44} />
                   {avatar === av.id && (

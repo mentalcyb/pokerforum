@@ -112,7 +112,7 @@ export default function Navbar() {
             <>
               {(isAdmin || isMod) && (
                 <Link href="/admin" className="px-3 py-1.5 text-sm text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium">
-                  {isAdmin ? '⚙️ Admin' : '🛡️ Mod'}
+                  {isAdmin ? `⚙️ ${t.adminBadge}` : `🛡️ ${t.isModerator}`}
                 </Link>
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
@@ -163,7 +163,7 @@ export default function Navbar() {
             ref={toggleRef}
             onClick={() => setMenuOpen(v => !v)}
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
-            aria-label="Menu"
+            aria-label={t.menu}
           >
             {menuOpen ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,7 +235,7 @@ export default function Navbar() {
               {isAdmin && (
                 <Link href="/admin" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
                   <span className="text-lg">⚙️</span>
-                  <span className="text-sm font-medium text-amber-600 dark:text-amber-400">Admin</span>
+                  <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{t.adminBadge}</span>
                 </Link>
               )}
 

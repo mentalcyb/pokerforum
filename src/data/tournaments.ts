@@ -11,6 +11,19 @@ export type Tournament = {
   currency: string
   website: string
   notes: string
+  /** Georgian versions of the free-text fields (optional; English is the fallback). */
+  location_ka?: string
+  dates_ka?: string
+  notes_ka?: string
+}
+
+/** Pick the localized version of a free-text tournament field. */
+export function trField(t: Tournament, field: 'location' | 'dates' | 'notes', lang: 'ka' | 'en'): string {
+  if (lang === 'ka') {
+    const ka = t[`${field}_ka` as const]
+    if (ka) return ka
+  }
+  return t[field]
 }
 
 const tournaments: Tournament[] = [
@@ -27,6 +40,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.pokerstars.com/poker/live/european-poker-tour/',
     notes: "One of EPT's biggest annual stops",
+    location_ka: 'ბარსელონა, ესპანეთი',
+    dates_ka: 'აგვ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'EPT-ის ერთ-ერთი უდიდესი ყოველწლიური ეტაპი',
   },
   {
     id: 3,
@@ -41,6 +57,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.pokerstars.com/poker/live/european-poker-tour/',
     notes: 'PokerStars EPT flagship festival',
+    location_ka: 'სენტ-ჯულიანსი, მალტა',
+    dates_ka: 'ოქტ.–ნოემ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'PokerStars-ის EPT-ის მთავარი ფესტივალი',
   },
   {
     id: 4,
@@ -55,6 +74,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.pokerstars.com/poker/live/european-poker-tour/',
     notes: 'One of the biggest EPT stops of the year',
+    location_ka: 'პრაღა, ჩეხეთი',
+    dates_ka: 'დეკ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'წლის ერთ-ერთი უდიდესი EPT ეტაპი',
   },
   {
     id: 5,
@@ -69,6 +91,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.wsop.com/wsop-europe/',
     notes: 'Official WSOP Europe bracelet events',
+    location_ka: 'ევროპა (დასაზუსტებელი)',
+    dates_ka: 'ოქტ.–ნოემ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'WSOP Europe-ის ოფიციალური სამაჯურის ტურნირები',
   },
   {
     id: 6,
@@ -83,6 +108,9 @@ const tournaments: Tournament[] = [
     currency: 'USD',
     website: 'https://www.wpt.com/',
     notes: 'WPT Prime stop — short flight from Tbilisi',
+    location_ka: 'კირენია, ჩრდილოეთ კვიპროსი',
+    dates_ka: 'სექტ.–ოქტ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'WPT Prime-ის ეტაპი — თბილისიდან მოკლე ფრენა',
   },
   {
     id: 7,
@@ -97,6 +125,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.wpt.com/',
     notes: 'WPT Main Tour stop at Casino Vienna',
+    location_ka: 'ვენა, ავსტრია',
+    dates_ka: 'ოქტ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'WPT-ის მთავარი ტურის ეტაპი Casino Vienna-ში',
   },
   {
     id: 8,
@@ -111,6 +142,9 @@ const tournaments: Tournament[] = [
     currency: 'USD',
     website: 'https://meritpoker.com/',
     notes: 'All-inclusive poker experience, 2-hour flight from Tbilisi',
+    location_ka: 'კირენია, ჩრდილოეთ კვიპროსი',
+    dates_ka: 'ივლ.–აგვ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'ყველაფერი ჩათვლილი პოკერის ფესტივალი, თბილისიდან 2-საათიანი ფრენა',
   },
   {
     id: 9,
@@ -125,6 +159,9 @@ const tournaments: Tournament[] = [
     currency: 'USD',
     website: 'https://www.russianpokertour.com/',
     notes: '2-hour flight from Tbilisi',
+    location_ka: 'სტამბოლი, თურქეთი',
+    dates_ka: 'ოქტ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'თბილისიდან 2-საათიანი ფრენა',
   },
   {
     id: 10,
@@ -139,6 +176,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.russianpokertour.com/',
     notes: 'Russian Poker Tour — accessible from Georgia',
+    location_ka: 'სოფია, ბულგარეთი',
+    dates_ka: 'სექტ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'Russian Poker Tour — საქართველოდან ხელმისაწვდომი',
   },
   {
     id: 11,
@@ -153,6 +193,9 @@ const tournaments: Tournament[] = [
     currency: 'USD',
     website: 'https://www.ggpoker.com/live/',
     notes: 'GGPoker live event, 4-hour flight from Tbilisi',
+    location_ka: 'დუბაი, არაბთა გაერთიანებული საამიროები',
+    dates_ka: 'ნოემ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'GGPoker-ის ცოცხალი ტურნირი, თბილისიდან 4-საათიანი ფრენა',
   },
   {
     id: 12,
@@ -167,6 +210,9 @@ const tournaments: Tournament[] = [
     currency: 'EUR',
     website: 'https://www.theapt.com/',
     notes: 'Direct flights from Tbilisi to Athens',
+    location_ka: 'ათენი, საბერძნეთი',
+    dates_ka: 'ოქტ. 2026 (დასაზუსტებელი)',
+    notes_ka: 'პირდაპირი რეისები თბილისიდან ათენამდე',
   },
   {
     id: 13,
@@ -181,6 +227,9 @@ const tournaments: Tournament[] = [
     currency: 'GEL',
     website: 'https://pokerforum.ge',
     notes: 'Local Georgian tournament series — stay tuned for dates',
+    location_ka: 'თბილისი, საქართველო',
+    dates_ka: '2026 (თარიღი დასაზუსტებელია)',
+    notes_ka: 'ადგილობრივი ქართული ტურნირების სერია — თარიღები მალე გამოცხადდება',
   },
 ]
 
