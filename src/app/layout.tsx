@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AppProvider } from '@/contexts/AppContext'
+import { PresenceProvider } from '@/contexts/PresenceContext'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
@@ -42,9 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ka" suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <AppProvider>
+        <PresenceProvider>
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
+        </PresenceProvider>
         </AppProvider>
       </body>
     </html>

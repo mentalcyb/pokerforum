@@ -323,6 +323,8 @@ export const translations = {
     // online users
     onlineUsers: 'ონლაინ მომხმარებლები',
     noOnlineUsers: 'ამჟამად ონლაინ არავინაა',
+    guestsOnline: (n: number) => `${n} სტუმარი`,
+    onlineBreakdown: (members: number, guests: number) => `${members} წევრი · ${guests} სტუმარი`,
     adminBadge: 'ადმინი',
     // profile settings
     profile: 'პროფილი',
@@ -813,6 +815,8 @@ export const translations = {
     // online users
     onlineUsers: 'Online Users',
     noOnlineUsers: 'Nobody online right now',
+    guestsOnline: (n: number) => `${n} guest${n !== 1 ? 's' : ''}`,
+    onlineBreakdown: (members: number, guests: number) => `${members} member${members !== 1 ? 's' : ''} · ${guests} guest${guests !== 1 ? 's' : ''}`,
     adminBadge: 'Admin',
     // profile settings
     profile: 'Profile',

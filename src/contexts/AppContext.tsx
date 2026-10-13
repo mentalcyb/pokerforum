@@ -19,7 +19,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedLang = localStorage.getItem('lang') as Lang
     const savedDark = localStorage.getItem('dark')
-    if (savedLang) setLangState(savedLang)
+    // ?lang=en (used by the English landing pages' links) wins and is remembered
+    const urlLang = new URLSearchParams(window.location.search).get('lang')
+    if (urlLang === 'ka' || urlLang === 'en') {
+      setLangState(urlLang)
+      localStorage.setItem('lang', urlLang)
+    } else if (savedLang === 'ka' || savedLang === 'en') setLangState(savedLang)
     if (savedDark === 'true') {
       setDark(true)
       document.documentElement.classList.add('dark')
