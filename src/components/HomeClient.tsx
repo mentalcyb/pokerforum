@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
+import { usePresence } from '@/contexts/PresenceContext'
 import PokerAvatar from '@/components/PokerAvatar'
 import ErrorState from '@/components/ErrorState'
 import { flagUrl, trField } from '@/data/tournaments'
@@ -25,6 +26,7 @@ export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
+  const presence = usePresence()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // null until mounted, so the server-rendered HTML never contains a frozen build-time date
@@ -139,6 +141,10 @@ export default function HomePage() {
     return `${Math.floor(hrs / 24)} ${t.day} ${t.ago}`
   }
 
+  // Members come from recent activity (last 5 min); guests are visitors without an account on the site right now.
+  const guestsOnline = presence.ready ? presence.guests : 0
+  const totalOnline = stats.online + guestsOnline
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero */}
@@ -162,9 +168,12 @@ export default function HomePage() {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"></span>
-              <span className="text-xl font-bold text-brand-600">{loading ? '…' : stats.online}</span>
+              <span className="text-xl font-bold text-brand-600">{loading ? '…' : totalOnline}</span>
             </div>
             <div className="text-xs text-gray-500">{t.online_now}</div>
+            {!loading && presence.ready && (
+              <div className="text-[11px] text-gray-400 mt-0.5">{t.onlineBreakdown(stats.online, presence.guests)}</div>
+            )}
           </div>
         </div>
       </div>
@@ -296,10 +305,10 @@ export default function HomePage() {
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.onlineUsers}</h2>
               <span className="flex items-center gap-1.5 text-xs text-gray-400">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
-                {stats.online}
+                {totalOnline}
               </span>
             </div>
-            {loading || onlineUsers.length === 0 ? (
+            {loading || (onlineUsers.length === 0 && guestsOnline === 0) ? (
               <div className="px-5 py-4 text-xs text-gray-400">
                 {loading ? t.loading : t.noOnlineUsers}
               </div>
@@ -325,6 +334,15 @@ export default function HomePage() {
                     )}
                   </Link>
                 ))}
+                {guestsOnline > 0 && (
+                  <div className="flex items-center gap-2.5 px-5 py-2.5">
+                    <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm">
+                      👤
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
+                    </div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{t.guestsOnline(guestsOnline)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
