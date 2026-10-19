@@ -95,15 +95,17 @@ export default function NewsList({ items }: { items: NewsItem[] }) {
                 )}
               </div>
               <h2 className="font-semibold text-gray-900 dark:text-white leading-snug">
-                {lang === 'ka' ? item.title_ka : item.title_en}
+                <Link href={`/news/${item.id}`} className="hover:text-brand-600">
+                  {lang === 'ka' ? item.title_ka : item.title_en}
+                </Link>
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1.5 leading-relaxed">
                 {lang === 'ka' ? item.summary_ka : item.summary_en}
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
-                <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">
-                  {t.newsReadSource(item.source)} ↗
-                </a>
+                <Link href={`/news/${item.id}`} className="font-medium text-brand-600 hover:underline">
+                  {t.newsReadMore} →
+                </Link>
                 <Link href={discussHref(item, lang)} className="font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600">
                   💬 {t.newsDiscuss}
                 </Link>

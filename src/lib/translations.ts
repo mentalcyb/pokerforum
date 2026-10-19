@@ -365,6 +365,10 @@ export const translations = {
     newsHide: 'დამალვა',
     newsConfirmHide: 'დავმალოთ ეს სიახლე?',
     newsSourceLabel: 'წყარო',
+    newsReadMore: 'სრულად წაიკითხე',
+    newsBack: '← ყველა სიახლე',
+    newsMore: 'სხვა სიახლეები',
+    newsEnNote: 'The full article is available in Georgian.',
     // dates
     months: ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'],
     weekdays: ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'],
@@ -873,6 +877,10 @@ export const translations = {
     newsHide: 'Hide',
     newsConfirmHide: 'Hide this story?',
     newsSourceLabel: 'Source',
+    newsReadMore: 'Read more',
+    newsBack: '← All news',
+    newsMore: 'More news',
+    newsEnNote: 'The full article is available in Georgian — switch the language to ქართული.',
     // dates
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     weekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
