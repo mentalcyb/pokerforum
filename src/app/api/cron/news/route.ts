@@ -14,7 +14,7 @@ export const maxDuration = 60
  */
 async function handle(req: NextRequest) {
   const auth = req.headers.get('authorization') || ''
-  const secret = process.env.CRON_SECRET
+  const secret = process.env.CRON_SECRET?.trim()
   const fromCron = !!secret && auth === `Bearer ${secret}`
   if (!fromCron && !(await isAdminRequest(req))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

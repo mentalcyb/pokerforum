@@ -101,7 +101,8 @@ Georgian style rules:
 Reply with ONLY a JSON array, one object per story, each with the keys: i, relevant, duplicate_of, title_ka, summary_ka, summary_en.`
 
 async function summarize(items: FeedItem[]): Promise<Summary[]> {
-  const key = process.env.OPENROUTER_API_KEY
+  // trim: a key pasted with stray spaces/newlines would otherwise be rejected
+  const key = process.env.OPENROUTER_API_KEY?.trim()
   if (!key) throw new Error('OPENROUTER_API_KEY is not set')
   const list = items.map((it, i) => `[${i}] ${it.title}\n${it.description}`).join('\n\n')
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
