@@ -1,6 +1,26 @@
 import { MetadataRoute } from 'next'
+import { createAdminClient } from '@/lib/supabase-admin'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+// refresh the list of news pages hourly
+export const revalidate = 3600
+
+async function newsEntries(base: string): Promise<MetadataRoute.Sitemap> {
+  try {
+    const { data } = await createAdminClient()
+      .from('news_items').select('id, published_at').eq('hidden', false)
+      .order('published_at', { ascending: false }).limit(500)
+    return (data ?? []).map((n: { id: number; published_at: string }) => ({
+      url: `${base}/news/${n.id}`,
+      lastModified: new Date(n.published_at),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    }))
+  } catch {
+    return []
+  }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = 'https://pokerforum.ge'
   const now = new Date()
 
@@ -66,5 +86,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/category/4`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
     { url: `${base}/category/5`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
     { url: `${base}/category/6`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
+    ...(await newsEntries(base)),
   ]
 }

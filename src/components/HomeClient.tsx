@@ -196,7 +196,7 @@ export default function HomePage() {
                 <Link href="/news" className="text-xs font-semibold text-brand-600 hover:underline">{t.newsAll}</Link>
               </div>
               {news.map(item => (
-                <Link key={item.id} href="/news" className="block px-5 py-3.5 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <Link key={item.id} href={`/news/${item.id}`} className="block px-5 py-3.5 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <div className="text-[11px] text-gray-400 mb-0.5">{item.source} · {newsDate(item.published_at, lang, t.months)}</div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{lang === 'ka' ? item.title_ka : item.title_en}</div>
                 </Link>
