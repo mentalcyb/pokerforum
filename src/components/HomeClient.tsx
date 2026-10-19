@@ -284,6 +284,23 @@ export default function HomePage() {
             )
           })()}
 
+          {/* Georgian players TOP 5 */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.rankingsHomeTitle}</h2>
+            </div>
+            {GEORGIA_TOP.slice(0, 5).map(p => (
+              <div key={p.rank} className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 text-sm">
+                <span className="w-6 text-center">{['🥇', '🥈', '🥉'][p.rank - 1] ?? <span className="text-xs text-gray-400">{p.rank}</span>}</span>
+                <span className="flex-1 truncate text-gray-800 dark:text-gray-200">{p.name}</span>
+                <span className="text-xs font-semibold tabular-nums text-brand-600">{formatUsd(p.earnings)}</span>
+              </div>
+            ))}
+            <Link href="/rankings" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
+              {t.rankingsAll} →
+            </Link>
+          </div>
+
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.upcomingTournaments}</h2>
@@ -321,23 +338,6 @@ export default function HomePage() {
             })}
             <Link href="/tournaments" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
               {t.allSeries} →
-            </Link>
-          </div>
-
-          {/* Georgian players TOP 5 */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.rankingsHomeTitle}</h2>
-            </div>
-            {GEORGIA_TOP.slice(0, 5).map(p => (
-              <div key={p.rank} className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 text-sm">
-                <span className="w-6 text-center">{['🥇', '🥈', '🥉'][p.rank - 1] ?? <span className="text-xs text-gray-400">{p.rank}</span>}</span>
-                <span className="flex-1 truncate text-gray-800 dark:text-gray-200">{p.name}</span>
-                <span className="text-xs font-semibold tabular-nums text-brand-600">{formatUsd(p.earnings)}</span>
-              </div>
-            ))}
-            <Link href="/rankings" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
-              {t.rankingsAll} →
             </Link>
           </div>
 
