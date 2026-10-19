@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { isAdminRequest } from '@/lib/adminAuth'
+import { diagnoseStreams } from '@/lib/streams'
+
+export const maxDuration = 30
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -20,6 +23,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const { id, action } = await req.json().catch(() => ({}))
+  if (action === 'check') {
+    const report = await diagnoseStreams()
+    revalidatePath('/streams')
+    revalidatePath('/api/streams/live')
+    return NextResponse.json(report)
+  }
   if (!Number.isInteger(id) || !['approve', 'remove'].includes(action)) {
     return NextResponse.json({ error: 'bad request' }, { status: 400 })
   }

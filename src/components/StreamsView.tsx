@@ -102,6 +102,23 @@ export default function StreamsView({ streams }: { streams: Streamer[] }) {
   }
 
   const pending = all.filter(c => !c.approved)
+  const [checking, setChecking] = useState(false)
+  const [report, setReport] = useState<string | null>(null)
+
+  async function checkNow() {
+    if (!token) return
+    setChecking(true); setReport(null)
+    try {
+      const res = await fetch('/api/streams/admin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...auth(token) },
+        body: JSON.stringify({ action: 'check' }),
+      })
+      const json = await res.json()
+      setReport(JSON.stringify(json, null, 1))
+      const tw = json.twitch?.live?.length ?? 0, yt = json.youtube?.live?.length ?? 0
+      if (tw + yt > 0) setTimeout(() => window.location.reload(), 1500)
+    } catch { setReport(t.networkError) } finally { setChecking(false) }
+  }
 
   return (
     <div>
@@ -112,6 +129,16 @@ export default function StreamsView({ streams }: { streams: Streamer[] }) {
           <p className="text-sm text-gray-500 dark:text-gray-400">{t.streamsSubtitle}</p>
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="mb-4 p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
+          <button onClick={checkNow} disabled={checking}
+            className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60">
+            {checking ? t.loading : `🔄 ${t.streamsCheckNow}`}
+          </button>
+          {report && <pre className="mt-2 text-[11px] whitespace-pre-wrap break-all text-amber-900 dark:text-amber-200">{report}</pre>}
+        </div>
+      )}
 
       {/* Admin: channels waiting for approval */}
       {isAdmin && pending.length > 0 && (
