@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { updateNews } from '@/lib/news'
+import { updateNews, backfillArticles } from '@/lib/news'
 import { isAdminRequest } from '@/lib/adminAuth'
 
 export const dynamic = 'force-dynamic'
@@ -19,12 +19,19 @@ async function handle(req: NextRequest) {
   if (!fromCron && !(await isAdminRequest(req))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+  const started = Date.now()
   const result = await updateNews()
   if (result.added > 0) {
     revalidatePath('/news')
   }
-  console.log('[news] run:', result)
-  return NextResponse.json(result, { status: result.error ? 500 : 200 })
+  // use the remaining time to write full articles for older stories that don't have one yet
+  let articles = 0
+  const left = 50000 - (Date.now() - started)
+  if (left > 10000) {
+    try { articles = await backfillArticles(12, left - 5000) } catch (e) { console.warn('[news] backfill failed:', e) }
+  }
+  console.log('[news] run:', result, 'articles:', articles)
+  return NextResponse.json({ ...result, articles }, { status: result.error ? 500 : 200 })
 }
 
 export const GET = handle

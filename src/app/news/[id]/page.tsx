@@ -45,7 +45,10 @@ export default async function NewsArticlePage({ params }: { params: { id: string
   if (!item) notFound()
   // Write the full Georgian article the first time it's opened (only if the column exists,
   // otherwise it couldn't be saved and would be rewritten on every visit).
-  const body = item.hasBodyColumn ? await ensureArticle(item) : null
+  // Don't keep the reader waiting too long: after 40s show the summary; the article still gets saved.
+  const body = item.hasBodyColumn
+    ? await Promise.race([ensureArticle(item), new Promise<null>(r => setTimeout(() => r(null), 40000))])
+    : null
 
   const jsonLd = {
     '@context': 'https://schema.org',

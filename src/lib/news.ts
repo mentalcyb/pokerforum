@@ -212,6 +212,23 @@ export async function ensureArticle(item: NewsItem): Promise<string | null> {
   }
 }
 
+/**
+ * Write missing articles for the newest stories, in parallel, within a time budget.
+ * Stories still without an article are picked up by the next run (or written on first visit).
+ */
+export async function backfillArticles(limit = 12, budgetMs = 25000): Promise<number> {
+  const { data, error } = await createAdminClient()
+    .from('news_items')
+    .select('id, source, source_url, title_en, title_ka, summary_ka, summary_en, published_at, body_ka')
+    .eq('hidden', false).is('body_ka', null)
+    .order('published_at', { ascending: false }).limit(limit)
+  if (error || !data?.length) return 0
+  let done = 0
+  const writing = Promise.all((data as NewsItem[]).map(async it => { if (await ensureArticle(it)) done++ }))
+  await Promise.race([writing, new Promise(r => setTimeout(r, budgetMs))])
+  return done
+}
+
 // ── one run ────────────────────────────────────────────────────────────────
 
 export type NewsRunResult = { fetched: number; candidates: number; added: number; skipped: number; error?: string }
