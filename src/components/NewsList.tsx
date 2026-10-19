@@ -83,9 +83,7 @@ export default function NewsList({ items }: { items: NewsItem[] }) {
         </div>
       )}
 
-      {list.length === 0 ? (
-        <div className="p-10 text-center text-gray-400 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">{t.newsEmpty}</div>
-      ) : (
+      {list.length > 0 && (
         <div className="space-y-3">
           {list.map(item => (
             <article key={item.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
@@ -115,7 +113,6 @@ export default function NewsList({ items }: { items: NewsItem[] }) {
         </div>
       )}
 
-      <p className="mt-6 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">{t.newsDisclaimer}</p>
     </div>
   )
 }
