@@ -288,10 +288,13 @@ export default function HomePage() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.rankingsHomeTitle}</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">{t.rankingsHomeNote}</p>
             </div>
             {GEORGIA_TOP.slice(0, 5).map(p => (
               <div key={p.rank} className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 text-sm">
                 <span className="w-6 text-center">{['🥇', '🥈', '🥉'][p.rank - 1] ?? <span className="text-xs text-gray-400">{p.rank}</span>}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://flagcdn.com/w20/ge.png" width={18} height={12} alt="GE" className="inline-block rounded-[2px] shrink-0" />
                 <span className="flex-1 truncate text-gray-800 dark:text-gray-200">{p.name}</span>
                 <span className="text-xs font-semibold tabular-nums text-brand-600">{formatUsd(p.earnings)}</span>
               </div>

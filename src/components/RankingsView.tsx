@@ -27,7 +27,11 @@ export default function RankingsView() {
           <div key={p.rank}
             className={`grid grid-cols-[3rem_1fr_auto] gap-2 items-center px-4 sm:px-5 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0 ${p.rank <= 3 ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}`}>
             <span className={`font-bold ${p.rank <= 3 ? 'text-lg' : 'text-sm text-gray-400'}`}>{MEDALS[p.rank - 1] ?? p.rank}</span>
-            <span className={`truncate ${p.rank <= 3 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-800 dark:text-gray-200'}`}>{p.name}</span>
+            <span className="flex items-center gap-2 min-w-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://flagcdn.com/w20/ge.png" width={20} height={14} alt="GE" className="inline-block rounded-[2px] shrink-0" />
+              <span className={`truncate ${p.rank <= 3 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-800 dark:text-gray-200'}`}>{p.name}</span>
+            </span>
             <span className="text-right font-semibold tabular-nums text-brand-600">{formatUsd(p.earnings)}</span>
           </div>
         ))}
