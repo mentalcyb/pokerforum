@@ -79,10 +79,10 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
+      <div className="w-full px-4 lg:px-6 flex items-center justify-between gap-4 h-14">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2" onClick={close}>
+        <Link href="/" className="flex items-center gap-2 shrink-0" onClick={close}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.svg" alt="pokerforum.ge logo" width={48} height={48} className="rounded-full" />
           <span className="font-semibold text-gray-900 dark:text-white">{t.siteName}</span>
