@@ -352,7 +352,7 @@ export const translations = {
     // news
     news: 'სიახლეები',
     newsTitle: 'პოკერის სიახლეები',
-    newsSubtitle: 'მსოფლიო პოკერის ამბები ქართულად — ახლდება ყოველდღე',
+    newsSubtitle: 'ყოველდღიურად განახლებადი მსოფლიო პოკერის ამბები ქართულად',
     newsHomeTitle: '📰 პოკერის სიახლეები',
     newsAll: 'ყველა სიახლე →',
     newsEmpty: 'სიახლეები მალე გამოჩნდება.',
@@ -860,7 +860,7 @@ export const translations = {
     // news
     news: 'News',
     newsTitle: 'Poker News',
-    newsSubtitle: 'World poker news in Georgian and English — updated daily',
+    newsSubtitle: 'World poker news, updated daily',
     newsHomeTitle: '📰 Poker News',
     newsAll: 'All news →',
     newsEmpty: 'News will appear here soon.',
