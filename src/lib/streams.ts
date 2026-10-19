@@ -65,7 +65,7 @@ async function getTwitchToken(): Promise<string | null> {
     body: new URLSearchParams({ client_id: id, client_secret: secret, grant_type: 'client_credentials' }),
     cache: 'no-store',
   })
-  if (!res.ok) throw new Error(`twitch token ${res.status}`)
+  if (!res.ok) throw new Error(`twitch token ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const json = await res.json()
   twitchToken = { value: json.access_token, expires: Date.now() + (json.expires_in ?? 3600) * 1000 }
   return twitchToken.value
@@ -84,7 +84,7 @@ async function checkTwitch(logins: string[]): Promise<Map<string, LiveInfo> | nu
       headers: { 'Client-Id': env('TWITCH_CLIENT_ID'), Authorization: `Bearer ${token}` },
       cache: 'no-store',
     })
-    if (!res.ok) throw new Error(`twitch streams ${res.status}`)
+    if (!res.ok) throw new Error(`twitch streams ${res.status}: ${(await res.text()).slice(0, 200)}`)
     const json = await res.json()
     for (const s of json.data ?? []) {
       live.set(String(s.user_login).toLowerCase(), {
@@ -140,7 +140,7 @@ async function checkYoutube(rows: Streamer[]): Promise<{ live: Map<string, LiveI
   const ids = Array.from(channelOf.keys())
   for (let i = 0; i < ids.length; i += 50) {
     const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails&id=${ids.slice(i, i + 50).join(',')}&key=${key}`, { cache: 'no-store' })
-    if (!res.ok) throw new Error(`youtube videos ${res.status}`)
+    if (!res.ok) throw new Error(`youtube videos ${res.status}: ${(await res.text()).slice(0, 200)}`)
     const json = await res.json()
     for (const v of json.items ?? []) {
       if (v.snippet?.liveBroadcastContent !== 'live') continue
@@ -187,6 +187,35 @@ export function sortStreamers(rows: Streamer[]): Streamer[] {
   return [...rows].sort((a, b) =>
     Number(b.is_live) - Number(a.is_live) || (b.viewers ?? 0) - (a.viewers ?? 0) ||
     (a.profiles?.username ?? '').localeCompare(b.profiles?.username ?? ''))
+}
+
+/** Admin check: re-check every approved channel now and report what each platform answered. */
+export async function diagnoseStreams(): Promise<Record<string, unknown>> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('streamers').select(SELECT).eq('approved', true)
+  const rows = (data ?? []) as Streamer[]
+  const report: Record<string, unknown> = {
+    twitchKeys: !!(env('TWITCH_CLIENT_ID') && env('TWITCH_CLIENT_SECRET')),
+    youtubeKey: !!env('YOUTUBE_API_KEY'),
+    channels: rows.map(r => `${r.platform}:${r.channel}`),
+  }
+  const tw = rows.filter(r => r.platform === 'twitch').map(r => r.channel)
+  if (tw.length) {
+    try {
+      twitchToken = null
+      const live = await checkTwitch(tw)
+      report.twitch = live === null ? 'no keys' : { live: Array.from(live.keys()) }
+    } catch (e) { report.twitch = { error: String((e as Error).message ?? e) } }
+  }
+  const yt = rows.filter(r => r.platform === 'youtube')
+  if (yt.length) {
+    try {
+      const res = await checkYoutube(yt)
+      report.youtube = res === null ? 'no key' : { live: Array.from(res.live.keys()) }
+    } catch (e) { report.youtube = { error: String((e as Error).message ?? e) } }
+  }
+  try { await refreshStatus(rows) } catch (e) { report.saveError = String(e) }
+  return report
 }
 
 async function refreshStatus(rows: Streamer[]) {
