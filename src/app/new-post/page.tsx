@@ -29,6 +29,11 @@ function NewPostForm() {
     try {
       const preselected = searchParams.get('category')
       if (preselected) setCategoryId(Number(preselected))
+      // "Discuss on the forum" from a news story: prefill the title and the source link
+      const preTitle = searchParams.get('title')
+      const ref = searchParams.get('ref')
+      if (preTitle) setTitle(preTitle.slice(0, 200))
+      if (ref && /^https?:\/\//.test(ref)) setContent(c => c || `${t.newsSourceLabel}: ${ref}\n\n`)
       const { data: authData } = await supabase.auth.getUser()
       if (!authData.user) { router.push('/auth'); return }
       setUser(authData.user)
