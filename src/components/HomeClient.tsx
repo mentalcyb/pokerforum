@@ -9,6 +9,8 @@ import ErrorState from '@/components/ErrorState'
 import { flagUrl, trField } from '@/data/tournaments'
 import { useUpcomingTournaments } from '@/lib/useUpcomingTournaments'
 import { catName, catDesc, formatDate } from '@/lib/i18n'
+import type { NewsItem } from '@/lib/news'
+import { newsDate } from '@/components/NewsList'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
@@ -27,6 +29,7 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats>({ members: 0, posts: 0, online: 0 })
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const presence = usePresence()
+  const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // null until mounted, so the server-rendered HTML never contains a frozen build-time date
@@ -109,6 +112,11 @@ export default function HomePage() {
 
       setCategories(cats || [])
       setPosts((ps as any) || [])
+      // latest news (optional: the table may not exist yet)
+      supabase.from('news_items')
+        .select('id, source, source_url, title_en, title_ka, summary_ka, summary_en, published_at')
+        .order('published_at', { ascending: false }).limit(4)
+        .then(({ data }) => setNews((data as NewsItem[]) ?? []))
       await loadStats()
     } catch (e) {
       console.error('[home] failed to load forum data:', e)
@@ -180,6 +188,22 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* Latest poker news */}
+          {news.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t.newsHomeTitle}</h2>
+                <Link href="/news" className="text-xs font-semibold text-brand-600 hover:underline">{t.newsAll}</Link>
+              </div>
+              {news.map(item => (
+                <Link key={item.id} href="/news" className="block px-5 py-3.5 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="text-[11px] text-gray-400 mb-0.5">{item.source} · {newsDate(item.published_at, lang, t.months)}</div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{lang === 'ka' ? item.title_ka : item.title_en}</div>
+                </Link>
+              ))}
+            </div>
+          )}
+
           {/* Categories */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">

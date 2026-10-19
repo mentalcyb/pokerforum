@@ -99,6 +99,9 @@ export default function Navbar() {
             {dark ? '☀️' : '🌙'}
           </button>
 
+            <Link href="/news" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
+              📰 {t.news}
+            </Link>
             <Link href="/odds-calculator" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
               🎲 {t.oddsCalc}
             </Link>
@@ -196,6 +199,10 @@ export default function Navbar() {
 
           {/* Tools (always visible) */}
           <div className="pb-2 border-b border-gray-100 dark:border-gray-800 space-y-1">
+            <Link href="/news" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <span className="text-lg">📰</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.news}</span>
+            </Link>
             <Link href="/tournaments" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">🏆</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.tournamentsNav}</span>
