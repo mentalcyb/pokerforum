@@ -207,6 +207,10 @@ export default function Navbar() {
               <span className="text-lg">🏆</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.tournamentsNav}</span>
             </Link>
+            <Link href="/rankings" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <span className="text-lg">🏅</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.rankingsTitle}</span>
+            </Link>
             <Link href="/odds-calculator" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">🎲</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.oddsCalc}</span>
