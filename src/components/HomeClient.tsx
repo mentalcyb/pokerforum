@@ -288,6 +288,7 @@ export default function HomePage() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.rankingsHomeTitle}</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">{t.rankingsHomeNote}</p>
             </div>
             {GEORGIA_TOP.slice(0, 5).map(p => (
               <div key={p.rank} className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 text-sm">
