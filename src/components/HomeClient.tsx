@@ -157,14 +157,14 @@ export default function HomePage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 mb-8">
-        <div className="flex items-center justify-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center text-white text-2xl">♠</div>
-          <div className="text-left">
+          <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.siteName}</h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm">{t.tagline}</p>
           </div>
         </div>
-        <div className="flex justify-center gap-10 sm:gap-16 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-center">
+        <div className="flex gap-8 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div>
             <div className="text-xl font-bold text-brand-600">{loading ? '…' : stats.members.toLocaleString()}</div>
             <div className="text-xs text-gray-500">{t.members}</div>
@@ -174,7 +174,7 @@ export default function HomePage() {
             <div className="text-xs text-gray-500">{t.posts}</div>
           </div>
           <div>
-            <div className="flex items-center justify-center gap-1.5">
+            <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"></span>
               <span className="text-xl font-bold text-brand-600">{loading ? '…' : totalOnline}</span>
             </div>
