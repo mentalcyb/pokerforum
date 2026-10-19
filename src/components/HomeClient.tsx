@@ -31,6 +31,7 @@ export default function HomePage() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const presence = usePresence()
   const [news, setNews] = useState<NewsItem[]>([])
+  const [liveStreams, setLiveStreams] = useState<{ id: number; platform: string; title: string | null; viewers: number | null; username: string; avatar: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // null until mounted, so the server-rendered HTML never contains a frozen build-time date
@@ -113,6 +114,7 @@ export default function HomePage() {
 
       setCategories(cats || [])
       setPosts((ps as any) || [])
+      fetch('/api/streams/live').then(r => r.json()).then(j => setLiveStreams(j.live ?? [])).catch(() => {})
       // latest news (optional: the table may not exist yet)
       supabase.from('news_items')
         .select('id, source, source_url, title_en, title_ka, summary_ka, summary_en, published_at')
@@ -267,6 +269,23 @@ export default function HomePage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+
+          {/* Streamers live now */}
+          {liveStreams.length > 0 && (
+            <Link href="/streams" className="block bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/50 overflow-hidden hover:shadow-md transition">
+              <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-sm text-gray-900 dark:text-white">{t.streamsHomeTitle}</div>
+              {liveStreams.slice(0, 3).map(s => (
+                <div key={s.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0">
+                  <PokerAvatar avatarId={s.avatar ?? 'spade'} size={28} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.username}</div>
+                    <div className="text-xs text-gray-400 truncate">{s.title}</div>
+                  </div>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white">LIVE</span>
+                </div>
+              ))}
+            </Link>
+          )}
 
           {/* Live clock */}
           {(() => {

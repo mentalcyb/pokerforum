@@ -15,6 +15,7 @@ export default function Navbar() {
   const [avatar, setAvatar] = useState<string>('spade')
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [liveCount, setLiveCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const supabase = createClient()
@@ -38,6 +39,7 @@ export default function Navbar() {
   }
 
   useEffect(() => {
+    fetch('/api/streams/live').then(r => r.json()).then(j => setLiveCount(j.live?.length ?? 0)).catch(() => {})
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
       if (data.user) loadProfile(data.user.id)
@@ -101,6 +103,10 @@ export default function Navbar() {
 
             <Link href="/news" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
               📰 {t.news}
+            </Link>
+            <Link href="/streams" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
+              📺 {t.streams}
+              {liveCount > 0 && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title={t.streamsLiveNow} />}
             </Link>
             <Link href="/odds-calculator" className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium hidden lg:inline-flex items-center gap-1">
               🎲 {t.oddsCalc}
@@ -210,6 +216,11 @@ export default function Navbar() {
             <Link href="/rankings" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">🏅</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.rankingsTitle}</span>
+            </Link>
+            <Link href="/streams" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <span className="text-lg">📺</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.streams}</span>
+              {liveCount > 0 && <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">● {liveCount} LIVE</span>}
             </Link>
             <Link href="/odds-calculator" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">🎲</span>
