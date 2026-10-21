@@ -66,7 +66,8 @@ async function checkAuth(): Promise<CheckResult> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 8000)
     try {
-      const res = await fetch(`${url}/auth/v1/health`, { signal: controller.signal, cache: 'no-store' })
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+      const res = await fetch(`${url}/auth/v1/health`, { headers: { apikey: key }, signal: controller.signal, cache: 'no-store' })
       if (!res.ok) throw new Error(`auth health endpoint returned ${res.status}`)
       return { ok: true }
     } finally {
