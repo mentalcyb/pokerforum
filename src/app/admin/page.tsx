@@ -216,6 +216,7 @@ export default function AdminPage() {
       if (!res.ok) { setSecurityError(json.error ?? t.adminFailedToLoad); setSecurityLoading(false); return }
       setSecurityUsers(json.users ?? [])
       setSessions(json.sessions ?? [])
+      if (json.warnings?.length) setSecurityError(t.securitySetupNeeded)
     } catch (e) {
       setSecurityError(t.networkError)
     }
