@@ -24,17 +24,29 @@ export async function GET(req: NextRequest) {
     if (!profile?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Fetch all profiles (including last_ip written directly on login)
-    const { data: profiles } = await admin
+    // Missing setup is reported to the admin instead of silently showing an empty table.
+    const warnings: string[] = []
+    let { data: profiles, error: profErr } = await admin
       .from('profiles')
       .select('id, username, is_banned, is_admin, is_moderator, created_at, last_ip')
       .order('created_at', { ascending: false })
+    if (profErr) {
+      // last_ip column not added yet (supabase/add_last_ip_to_profiles.sql) — load without it
+      warnings.push('missing_last_ip')
+      const retry = await admin
+        .from('profiles')
+        .select('id, username, is_banned, is_admin, is_moderator, created_at')
+        .order('created_at', { ascending: false })
+      profiles = retry.data as typeof profiles
+    }
 
     // Fetch recent sessions (last 200)
-    const { data: sessions } = await admin
+    const { data: sessions, error: sessErr } = await admin
       .from('user_sessions')
       .select('id, user_id, ip_address, user_agent, action, created_at, profiles(username)')
       .order('created_at', { ascending: false })
       .limit(200)
+    if (sessErr) warnings.push('missing_sessions')
 
     // Fetch post counts per user
     const { data: postCounts } = await admin
@@ -73,7 +85,7 @@ export async function GET(req: NextRequest) {
       last_ip: p.is_admin ? null : ((p as any).last_ip ?? lastIp[p.id] ?? null),
     }))
 
-    return NextResponse.json({ users: enrichedUsers, sessions: sessions ?? [] })
+    return NextResponse.json({ users: enrichedUsers, sessions: sessions ?? [], warnings })
   } catch (err) {
     console.error('[admin/security]', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
