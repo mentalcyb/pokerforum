@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useApp } from '@/contexts/AppContext'
 import { createClient } from '@/lib/supabase'
 import { ROOMS, MAX_ROOMS_PER_USER } from '@/data/rooms'
+import RoomIcon from '@/components/RoomIcon'
 
 type Votes = { counts: Record<string, number>; voters: number; mine: string[] }
 
@@ -96,9 +97,7 @@ export default function RoomsView() {
             <div key={r.id} className={`bg-white dark:bg-gray-900 rounded-2xl border p-4 transition ${on ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-gray-200 dark:border-gray-800'}`}>
               <div className="flex items-center gap-3">
                 <span className="w-7 text-center text-lg">{hasVotes && i < 3 ? MEDALS[i] : <span className="text-sm text-gray-400">{i + 1}</span>}</span>
-                <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: r.color }}>
-                  {r.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}
-                </span>
+                <RoomIcon room={r} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 dark:text-white">{r.name}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 leading-snug">{lang === 'ka' ? r.ka : r.en}</div>
