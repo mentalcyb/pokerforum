@@ -66,6 +66,9 @@ export default function InstallApp() {
   const pathname = usePathname()
   const [evt, setEvt] = useState<InstallEvent | null>(null)
   const [ios, setIos] = useState(false)
+  // iPhone but not Safari (Chrome, Instagram/Facebook in-app browser…): must open in Safari first
+  const [iosOther, setIosOther] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [show, setShow] = useState(false)
   const [visible, setVisible] = useState(false) // for the slide-in animation
 
@@ -74,7 +77,9 @@ export default function InstallApp() {
     const ua = navigator.userAgent
     // opened as the installed app (counts iPhones too, which don't report installs)
     if (isStandaloneApp()) track('open')
-    setIos(/iphone|ipad|ipod/i.test(ua))
+    const isIos = /iphone|ipad|ipod/i.test(ua)
+    setIos(isIos)
+    setIosOther(isIos && (/crios|fxios|edgios|opios|instagram|fban|fbav|line\/|telegram/i.test(ua) || !/safari/i.test(ua)))
     const onPrompt = (e: Event) => { e.preventDefault(); setEvt(e as InstallEvent) }
     const onOpen = () => setShow(true)
     window.addEventListener('beforeinstallprompt', onPrompt)
@@ -124,7 +129,52 @@ export default function InstallApp() {
     if (choice?.outcome !== 'accepted') write(DISMISS_KEY, String(Date.now()))
   }
 
+  async function copyLink() {
+    try { await navigator.clipboard.writeText('https://pokerforum.ge'); setCopied(true) } catch {}
+  }
+
   if (!open) return null
+
+  // iPhone: Apple allows no install button, so show the two Safari taps with pictures
+  if (ios) {
+    return (
+      <>
+        {!iosOther && <div className={`fixed left-1/2 -translate-x-1/2 bottom-1 z-50 text-3xl animate-bounce transition-opacity ${visible ? 'opacity-100' : 'opacity-0'}`} aria-hidden>⬇️</div>}
+        <div className={`fixed inset-x-3 bottom-12 z-50 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-xl p-4 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-xl shrink-0" />
+            <div className="flex-1 font-semibold text-gray-900 dark:text-white text-sm">{t.installTitle}</div>
+            <button onClick={dismiss} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="close">✕</button>
+          </div>
+          {iosOther ? (
+            <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+              <p>{t.installIosOpenSafari}</p>
+              <button onClick={copyLink} className="mt-2 w-full py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold">
+                {copied ? `✓ ${t.installCopied}` : `📋 ${t.installCopyLink}`}
+              </button>
+            </div>
+          ) : (
+            <ol className="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <li className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                <span className="flex-1">{t.installIosStep1}</span>
+                {/* Safari share icon */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11v8a2 2 0 002 2h8a2 2 0 002-2v-8"/></svg>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                <span className="flex-1">{t.installIosStep2}</span>
+                {/* "Add to Home Screen" icon */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-gray-700 dark:text-gray-200"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>
+              </li>
+            </ol>
+          )}
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className={`fixed inset-x-3 bottom-3 z-50 sm:left-auto sm:right-4 sm:w-96 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-xl p-3.5 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
       <div className="flex items-center gap-3">
