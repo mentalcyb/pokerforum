@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/contexts/AppContext'
 import { createClient } from '@/lib/supabase'
+import { isStandaloneApp } from '@/components/InstallApp'
 
 type Stats = { installed: number; today: number; active7: number; active30: number; platforms: Record<string, number>; error?: string }
 
@@ -26,7 +27,7 @@ export default function AppStatsCard() {
     try {
       let device = localStorage.getItem('pf-device')
       if (!device) { device = crypto.randomUUID(); localStorage.setItem('pf-device', device) }
-      const standalone = window.matchMedia('(display-mode: standalone)').matches
+      const standalone = isStandaloneApp()
       const res = await fetch('/api/app-event', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device, kind: 'open', platform: /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'desktop' }),
