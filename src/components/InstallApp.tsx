@@ -41,7 +41,14 @@ function track(kind: 'install' | 'open') {
 
 export function isStandaloneApp(): boolean {
   if (typeof window === 'undefined') return false
-  return window.matchMedia('(display-mode: standalone)').matches || !!(navigator as unknown as { standalone?: boolean }).standalone
+  // The installed app always starts at /?source=app (see manifest.webmanifest). Some phones
+  // (e.g. Xiaomi) don't report "standalone" display mode, so the start URL is remembered for this session.
+  try {
+    if (new URLSearchParams(window.location.search).get('source') === 'app') sessionStorage.setItem('pf-app', '1')
+    if (sessionStorage.getItem('pf-app') === '1') return true
+  } catch {}
+  return ['standalone', 'fullscreen', 'minimal-ui'].some(m => window.matchMedia(`(display-mode: ${m})`).matches)
+    || !!(navigator as unknown as { standalone?: boolean }).standalone
 }
 
 /** Ask the install card to open (used by the "Install app" menu item). */
