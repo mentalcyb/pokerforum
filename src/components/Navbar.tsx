@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import PokerAvatar from '@/components/PokerAvatar'
 import { LanguageDropdown, LanguageSegmented } from '@/components/LanguageSwitcher'
+import { openInstallCard, isStandaloneApp } from '@/components/InstallApp'
 
 export default function Navbar() {
   const { t, dark, toggleDark } = useApp()
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [liveCount, setLiveCount] = useState(0)
+  const [canInstall, setCanInstall] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const supabase = createClient()
@@ -39,6 +41,7 @@ export default function Navbar() {
   }
 
   useEffect(() => {
+    setCanInstall(!isStandaloneApp())
     fetch('/api/streams/live').then(r => r.json()).then(j => setLiveCount(j.live?.length ?? 0)).catch(() => {})
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
@@ -217,6 +220,12 @@ export default function Navbar() {
               <span className="text-lg">🏅</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.rankingsTitle}</span>
             </Link>
+            {canInstall && (
+              <button onClick={() => { close(); openInstallCard() }} className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                <span className="text-lg">📲</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.installButton}</span>
+              </button>
+            )}
             <Link href="/streams" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">📺</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.streams}</span>
