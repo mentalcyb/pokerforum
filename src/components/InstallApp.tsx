@@ -16,6 +16,29 @@ const QUIET_PATHS = [/^\/home-games\/.+/, /^\/auth/]
 const read = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
 const write = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch {} }
 
+function platformOf(ua: string): string {
+  if (/android/i.test(ua)) return 'android'
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios'
+  if (/windows|macintosh|linux|cros/i.test(ua)) return 'desktop'
+  return 'other'
+}
+
+/** Anonymous app statistics: a random id for this device, and at most one ping per kind per day. */
+function track(kind: 'install' | 'open') {
+  try {
+    let device = localStorage.getItem('pf-device')
+    if (!device) { device = crypto.randomUUID(); localStorage.setItem('pf-device', device) }
+    const today = new Date().toISOString().slice(0, 10)
+    const key = `pf-track-${kind}`
+    if (localStorage.getItem(key) === today) return
+    localStorage.setItem(key, today)
+    fetch('/api/app-event', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+      body: JSON.stringify({ device, kind, platform: platformOf(navigator.userAgent) }),
+    }).catch(() => {})
+  } catch {}
+}
+
 export function isStandaloneApp(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(display-mode: standalone)').matches || !!(navigator as unknown as { standalone?: boolean }).standalone
@@ -42,12 +65,14 @@ export default function InstallApp() {
   useEffect(() => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})
     const ua = navigator.userAgent
+    // opened as the installed app (counts iPhones too, which don't report installs)
+    if (isStandaloneApp()) track('open')
     setIos(/iphone|ipad|ipod/i.test(ua))
     const onPrompt = (e: Event) => { e.preventDefault(); setEvt(e as InstallEvent) }
     const onOpen = () => setShow(true)
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('pf-open-install', onOpen)
-    const onInstalled = () => { setShow(false); setEvt(null) }
+    const onInstalled = () => { setShow(false); setEvt(null); track('install') }
     window.addEventListener('appinstalled', onInstalled)
 
     // count visits (once per browser session)

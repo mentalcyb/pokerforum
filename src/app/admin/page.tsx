@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import AppStatsCard from '@/components/AppStatsCard'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -280,6 +281,8 @@ export default function AdminPage() {
           <button onClick={() => setError(null)} className="ml-3 underline text-xs">{t.adminDismiss}</button>
         </div>
       )}
+
+      {currentUserIsAdmin && <AppStatsCard />}
 
       <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setTab('posts')} className={tabClass('posts')}>{t.postsTab} ({posts.length})</button>
