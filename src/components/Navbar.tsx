@@ -231,10 +231,6 @@ export default function Navbar() {
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.streams}</span>
               {liveCount > 0 && <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">● {liveCount} LIVE</span>}
             </Link>
-            <Link href="/rooms" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              <span className="text-lg">🃏</span>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.roomsTitle}</span>
-            </Link>
             <Link href="/odds-calculator" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <span className="text-lg">🎲</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.oddsCalc}</span>

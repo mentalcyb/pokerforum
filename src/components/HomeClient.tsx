@@ -12,8 +12,6 @@ import { catName, catDesc, formatDate } from '@/lib/i18n'
 import type { NewsItem } from '@/lib/news'
 import { newsDate } from '@/components/NewsList'
 import { GEORGIA_TOP, formatUsd } from '@/data/rankings'
-import { ROOMS } from '@/data/rooms'
-import RoomIcon from '@/components/RoomIcon'
 
 const CATEGORY_ICONS: Record<string, string> = {
   spade: '♠', trophy: '🏆', money: '💰', dice: '🎲', book: '📚', brain: '🧠'
@@ -33,7 +31,6 @@ export default function HomePage() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const presence = usePresence()
   const [news, setNews] = useState<NewsItem[]>([])
-  const [roomVotes, setRoomVotes] = useState<{ counts: Record<string, number>; voters: number }>({ counts: {}, voters: 0 })
   const [liveStreams, setLiveStreams] = useState<{ id: number; platform: string; title: string | null; viewers: number | null; username: string; avatar: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +114,6 @@ export default function HomePage() {
 
       setCategories(cats || [])
       setPosts((ps as any) || [])
-      fetch('/api/rooms/votes').then(r => r.json()).then(j => setRoomVotes({ counts: j.counts ?? {}, voters: j.voters ?? 0 })).catch(() => {})
       fetch('/api/streams/live').then(r => r.json()).then(j => setLiveStreams(j.live ?? [])).catch(() => {})
       // latest news (optional: the table may not exist yet)
       supabase.from('news_items')
@@ -324,28 +320,6 @@ export default function HomePage() {
             ))}
             <Link href="/rankings" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
               {t.rankingsAll} →
-            </Link>
-          </div>
-
-          {/* Where Georgians play (member votes) */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">{t.roomsHomeTitle}</h2>
-            </div>
-            {roomVotes.voters === 0 ? (
-              <div className="px-5 py-3 text-xs text-gray-400">{t.roomsHomeEmpty}</div>
-            ) : (
-              [...ROOMS].filter(r => (roomVotes.counts[r.id] ?? 0) > 0)
-                .sort((a, b) => (roomVotes.counts[b.id] ?? 0) - (roomVotes.counts[a.id] ?? 0)).slice(0, 3).map(r => (
-                <div key={r.id} className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 text-sm">
-                  <RoomIcon room={r} size={24} />
-                  <span className="flex-1 truncate text-gray-800 dark:text-gray-200">{r.name}</span>
-                  <span className="text-xs font-semibold tabular-nums text-brand-600">{Math.round(((roomVotes.counts[r.id] ?? 0) / roomVotes.voters) * 100)}%</span>
-                </div>
-              ))
-            )}
-            <Link href="/rooms" className="flex items-center justify-center gap-1 px-5 py-3 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors border-t border-gray-100 dark:border-gray-800">
-              {t.roomsHomeVote}
             </Link>
           </div>
 
