@@ -21,13 +21,17 @@ export default function InstallApp() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone
     let dismissed = false
     try { dismissed = Date.now() - Number(localStorage.getItem(DISMISS_KEY) || 0) < 14 * 86400_000 } catch {}
+    const ua = navigator.userAgent
+    const mobile = /android|iphone|ipad|ipod/i.test(ua)
     if (standalone || dismissed) return
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent)
-    const mobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent)
-    if (isIos) { setIos(true); const id = setTimeout(() => setShow(true), 8000); return () => clearTimeout(id) }
-    const onPrompt = (e: Event) => { e.preventDefault(); setEvt(e as InstallEvent); if (mobile) setShow(true) }
+    setIos(/iphone|ipad|ipod/i.test(ua))
+    // Chrome may offer its own install prompt; we keep it for the button
+    const onPrompt = (e: Event) => { e.preventDefault(); setEvt(e as InstallEvent); setShow(true) }
     window.addEventListener('beforeinstallprompt', onPrompt)
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt)
+    // On phones always show the card after a few seconds — with the install button when the
+    // browser supports it, otherwise with short manual steps (Safari, Samsung Internet, etc.)
+    const id = mobile ? setTimeout(() => setShow(true), 4000) : undefined
+    return () => { window.removeEventListener('beforeinstallprompt', onPrompt); if (id) clearTimeout(id) }
   }, [])
 
   function dismiss() {
@@ -50,7 +54,7 @@ export default function InstallApp() {
         <img src="/icons/icon-192.png" alt="" width={44} height={44} className="rounded-xl" />
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-gray-900 dark:text-white text-sm">{t.installTitle}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ios ? t.installIosSteps : t.installHint}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ios ? t.installIosSteps : evt ? t.installHint : t.installAndroidSteps}</div>
         </div>
         <button onClick={dismiss} className="text-gray-400 hover:text-gray-600 text-lg leading-none" aria-label="close">✕</button>
       </div>
