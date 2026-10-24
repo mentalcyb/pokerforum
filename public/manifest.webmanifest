@@ -1,0 +1,21 @@
+{
+  "name": "pokerforum.ge — ქართული პოკერის ფორუმი",
+  "short_name": "PokerForum",
+  "description": "ქართული პოკერის ფორუმი: სიახლეები, სტრიმები, თამაში მეგობრებთან.",
+  "lang": "ka",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "სიახლეები", "url": "/news" },
+    { "name": "სტრიმები", "url": "/streams" },
+    { "name": "ითამაშე მეგობრებთან", "url": "/home-games" }
+  ]
+}

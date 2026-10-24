@@ -4,6 +4,7 @@ import { AppProvider } from '@/contexts/AppContext'
 import { PresenceProvider } from '@/contexts/PresenceContext'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import InstallApp from '@/components/InstallApp'
 
 export const metadata: Metadata = {
   // makes relative canonical/OG URLs absolute
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
+    apple: '/icons/apple-touch-icon.png',
   },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'PokerForum', statusBarStyle: 'black-translucent' },
   verification: {
     google: 'f8HPZ7bi689zW3MS7Oqc3Y3LLp0bFlsCHBFCLrh39EI',
   },
@@ -36,6 +40,7 @@ export const metadata: Metadata = {
 // supports both light and dark itself, so they don't force-invert its colors.
 export const viewport = {
   colorScheme: 'light dark',
+  themeColor: '#0b1220',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
+          <InstallApp />
         </PresenceProvider>
         </AppProvider>
       </body>
