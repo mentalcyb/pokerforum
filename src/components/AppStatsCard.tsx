@@ -9,15 +9,33 @@ type Stats = { installed: number; today: number; active7: number; active30: numb
 export default function AppStatsCard() {
   const { t } = useApp()
   const [s, setS] = useState<Stats | null>(null)
+  const [check, setCheck] = useState<string | null>(null)
 
-  useEffect(() => {
-    createClient().auth.getSession().then(async ({ data }) => {
-      const tk = data.session?.access_token
-      if (!tk) return
-      const res = await fetch('/api/admin/app-stats', { headers: { Authorization: `Bearer ${tk}` } })
-      if (res.ok) setS(await res.json())
-    })
-  }, [])
+  async function load() {
+    const { data } = await createClient().auth.getSession()
+    const tk = data.session?.access_token
+    if (!tk) return
+    const res = await fetch('/api/admin/app-stats', { headers: { Authorization: `Bearer ${tk}` } })
+    if (res.ok) setS(await res.json())
+  }
+  useEffect(() => { load() }, [])
+
+  /** Sends a test ping from this browser and shows exactly what the server answered. */
+  async function runCheck() {
+    setCheck('…')
+    try {
+      let device = localStorage.getItem('pf-device')
+      if (!device) { device = crypto.randomUUID(); localStorage.setItem('pf-device', device) }
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+      const res = await fetch('/api/app-event', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device, kind: 'open', platform: /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'desktop' }),
+      })
+      const json = await res.json().catch(() => ({}))
+      setCheck(`${res.status} ${JSON.stringify(json)} · app-mode: ${standalone ? 'yes' : 'no'}`)
+      load()
+    } catch (e) { setCheck(String(e)) }
+  }
 
   if (!s) return null
   if (s.error) return <div className="mb-6 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 text-sm text-amber-800 dark:text-amber-300">{t.appStatsSetup}</div>
@@ -35,9 +53,11 @@ export default function AppStatsCard() {
           </div>
         ))}
       </div>
-      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Android: {p.android ?? 0} · iPhone: {p.ios ?? 0} · {t.appStatsComputer}: {p.desktop ?? 0}
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+        <span>Android: {p.android ?? 0} · iPhone: {p.ios ?? 0} · {t.appStatsComputer}: {p.desktop ?? 0}</span>
+        <button onClick={runCheck} className="ml-auto px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">🔍 {t.appStatsCheck}</button>
       </div>
+      {check && <pre className="mt-2 text-[11px] whitespace-pre-wrap break-all text-gray-500">{check}</pre>}
     </div>
   )
 }

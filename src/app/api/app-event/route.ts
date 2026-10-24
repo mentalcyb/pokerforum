@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
   const { error } = await createAdminClient().from('app_events')
     .upsert({ device_id: device, kind, platform: PLATFORMS.includes(platform) ? platform : 'other' },
       { onConflict: 'device_id,kind,day', ignoreDuplicates: true })
-  // table may not exist yet — never bother the visitor with it
-  if (error) console.warn('[app-event]', error.message)
+  // the visitor never sees this; the admin panel's check button shows it
+  if (error) {
+    console.warn('[app-event]', error.message)
+    return NextResponse.json({ ok: false, error: error.message })
+  }
   return NextResponse.json({ ok: true })
 }
