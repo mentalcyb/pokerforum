@@ -31,10 +31,15 @@ export default function OwnerReturnBar() {
   async function goBack() {
     if (!saved) return
     setBusy(true)
+    const res = await fetch('/api/owner-return', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket: saved }),
+    })
+    const json = await res.json().catch(() => ({}))
+    try { localStorage.removeItem(OWNER_KEY) } catch {}
+    if (!res.ok || !json.token_hash) { window.location.href = '/auth?mode=login'; return }
     const supabase = createClient()
     await supabase.auth.signOut({ scope: 'local' })
-    const { error } = await supabase.auth.refreshSession({ refresh_token: saved })
-    try { localStorage.removeItem(OWNER_KEY) } catch {}
+    const { error } = await supabase.auth.verifyOtp({ token_hash: json.token_hash, type: 'magiclink' })
     window.location.href = error ? '/auth?mode=login' : '/admin'
   }
 
