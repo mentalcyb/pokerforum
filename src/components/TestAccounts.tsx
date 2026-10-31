@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase'
 
 type Account = { id: string; username: string; created_at: string }
 
+export const OWNER_KEY = 'pf-owner-session'
+
 /** Admin panel: create test accounts and enter them with one click (no password, nothing logged). */
 export default function TestAccounts() {
   const { t } = useApp()
@@ -39,7 +41,10 @@ export default function TestAccounts() {
     const r = await call('POST', { action: 'login', id: a.id })
     if (!r.ok) { setMsg(`⚠️ ${r.json.error}`); setBusy(false); return }
     const supabase = createClient()
-    await supabase.auth.signOut()
+    // keep the owner's own session so the "back to my account" bar can return to it without a password
+    const { data: own } = await supabase.auth.getSession()
+    if (own.session) { try { localStorage.setItem(OWNER_KEY, own.session.refresh_token) } catch {} }
+    await supabase.auth.signOut({ scope: 'local' })
     const { error } = await supabase.auth.verifyOtp({ token_hash: r.json.token_hash, type: 'magiclink' })
     if (error) { setMsg(`⚠️ ${error.message}`); setBusy(false); return }
     window.location.href = '/'

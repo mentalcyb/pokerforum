@@ -5,6 +5,7 @@ import { PresenceProvider } from '@/contexts/PresenceContext'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import InstallApp from '@/components/InstallApp'
+import OwnerReturnBar from '@/components/OwnerReturnBar'
 
 export const metadata: Metadata = {
   // makes relative canonical/OG URLs absolute
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="flex-1">{children}</main>
           <Footer />
           <InstallApp />
+          <OwnerReturnBar />
         </PresenceProvider>
         </AppProvider>
       </body>

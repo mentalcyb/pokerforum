@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import AppStatsCard from '@/components/AppStatsCard'
-import TestAccounts from '@/components/TestAccounts'
+import OwnerTools from '@/components/OwnerTools'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -284,7 +284,7 @@ export default function AdminPage() {
       )}
 
       {currentUserIsAdmin && <AppStatsCard />}
-      {currentUserIsAdmin && <TestAccounts />}
+      {currentUserIsAdmin && <OwnerTools />}
 
       <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setTab('posts')} className={tabClass('posts')}>{t.postsTab} ({posts.length})</button>

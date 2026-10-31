@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { isAdminRequest } from '@/lib/adminAuth'
+import { ownerFromRequest } from '@/lib/ownerAuth'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
 
 /**
- * Admin-only test accounts: created here (no registration form, no e-mail), and entered with
+ * Owner-only test accounts: created here (no registration form, no e-mail), and entered with
  * one click from the admin panel (a one-time login token — no password, no IP/login logging).
  * They're recognised by app_metadata.test_account, which only the server can set.
  */
@@ -22,12 +22,12 @@ async function listTestAccounts() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!(await ownerFromRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   return NextResponse.json({ accounts: await listTestAccounts() })
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!(await ownerFromRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const admin = createAdminClient()
 
