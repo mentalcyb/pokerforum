@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { createClient } from '@/lib/supabase'
+import { ownerFromRequest } from '@/lib/ownerAuth'
 
 // Never serve cached database responses from this route
 export const dynamic = 'force-dynamic'
@@ -19,9 +19,8 @@ export async function GET(req: NextRequest) {
     const { data: { user }, error: authErr } = await admin.auth.getUser(token)
     if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Check admin flag
-    const { data: profile } = await admin.from('profiles').select('is_admin').eq('id', user.id).single()
-    if (!profile?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // IPs, e-mails and login history: site owner only (OWNER_EMAIL), not every admin
+    if (!(await ownerFromRequest(req))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Fetch all profiles (including last_ip written directly on login)
     // Missing setup is reported to the admin instead of silently showing an empty table.

@@ -49,6 +49,17 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
+  // the Security tab (IPs, e-mails) is for the site owner only
+  const [isOwner, setIsOwner] = useState(false)
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const tk = data.session?.access_token
+      if (!tk) return
+      const res = await fetch('/api/admin/whoami', { headers: { Authorization: `Bearer ${tk}` } })
+      if (res.ok) setIsOwner(!!(await res.json()).owner)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const supabase = createClient()
 
   useEffect(() => {
@@ -291,7 +302,7 @@ export default function AdminPage() {
         {currentUserIsAdmin && <button onClick={() => setTab('categories')} className={tabClass('categories')}>{t.categoriesTab} ({categories.length})</button>}
         {currentUserIsAdmin && <button onClick={() => setTab('tournaments')} className={tabClass('tournaments')}>{t.tournamentsTab} ({tournaments.length})</button>}
         <button onClick={() => setTab('users')} className={tabClass('users')}>{t.usersTab} ({users.length})</button>
-        {currentUserIsAdmin && (
+        {isOwner && (
           <button onClick={() => { setTab('security'); loadSecurity() }} className={tabClass('security')}>
             {t.securityTab}
           </button>
