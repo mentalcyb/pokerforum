@@ -6,6 +6,7 @@ import { useApp } from '@/contexts/AppContext'
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
 const DISMISS_KEY = 'pf-install-dismissed'
+const INSTALLED_KEY = 'pf-installed'
 const VISITS_KEY = 'pf-visits'
 const DISMISS_DAYS = 30
 const FIRST_VISIT_DELAY_MS = 10_000
@@ -76,7 +77,7 @@ export default function InstallApp() {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})
     const ua = navigator.userAgent
     // opened as the installed app (counts iPhones too, which don't report installs)
-    if (isStandaloneApp()) track('open')
+    if (isStandaloneApp()) { track('open'); write(INSTALLED_KEY, '1') }
     const isIos = /iphone|ipad|ipod/i.test(ua)
     setIos(isIos)
     setIosOther(isIos && (/crios|fxios|edgios|opios|instagram|fban|fbav|line\/|telegram/i.test(ua) || !/safari/i.test(ua)))
@@ -84,7 +85,7 @@ export default function InstallApp() {
     const onOpen = () => setShow(true)
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('pf-open-install', onOpen)
-    const onInstalled = () => { setShow(false); setEvt(null); track('install') }
+    const onInstalled = () => { setShow(false); setEvt(null); track('install'); write(INSTALLED_KEY, '1') }
     window.addEventListener('appinstalled', onInstalled)
 
     // count visits (once per browser session)
@@ -96,8 +97,17 @@ export default function InstallApp() {
     const mobile = /android|iphone|ipad|ipod/i.test(ua)
     const dismissed = Date.now() - Number(read(DISMISS_KEY) || 0) < DISMISS_DAYS * 86400_000
     let id: ReturnType<typeof setTimeout> | undefined
-    if (mobile && !dismissed && !isStandaloneApp()) {
-      id = setTimeout(() => setShow(true), visits >= 2 ? RETURN_VISIT_DELAY_MS : FIRST_VISIT_DELAY_MS)
+    // only for people who don't have the app yet
+    const installedHere = read(INSTALLED_KEY) === '1'
+    if (mobile && !dismissed && !installedHere && !isStandaloneApp()) {
+      id = setTimeout(async () => {
+        // Chrome on Android can tell whether this site's app is already installed on the phone
+        try {
+          const apps = await (navigator as unknown as { getInstalledRelatedApps?: () => Promise<unknown[]> }).getInstalledRelatedApps?.()
+          if (apps && apps.length) { write(INSTALLED_KEY, '1'); return }
+        } catch {}
+        setShow(true)
+      }, visits >= 2 ? RETURN_VISIT_DELAY_MS : FIRST_VISIT_DELAY_MS)
     }
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt)
