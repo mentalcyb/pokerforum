@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import ChangePassword from '@/components/ChangePassword'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -213,6 +214,7 @@ export default function ProfilePage() {
             {saving ? t.loading : t.saveChanges}
           </button>
         </form>
+        <ChangePassword />
       </div>
     </div>
   )

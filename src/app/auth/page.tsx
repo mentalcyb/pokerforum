@@ -27,6 +27,7 @@ function AuthForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
+  const [forgot, setForgot] = useState(false)
 
   // Sync mode when URL param changes (e.g. navbar link navigates to ?mode=login)
   useEffect(() => {
@@ -100,6 +101,20 @@ function AuthForm() {
     }
   }
 
+  // "Forgot password": e-mail a reset link; the same message either way (doesn't reveal who has an account)
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(''); setSuccess(''); setLoading(true)
+    try {
+      await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/auth/reset` })
+      setSuccess(t.resetLinkSent)
+    } catch {
+      setError(t.loadError)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
 
   return (
@@ -107,13 +122,26 @@ function AuthForm() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center text-white text-3xl mx-auto mb-3">♠</div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{mode === 'login' ? t.loginTitle : t.registerTitle}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{forgot ? t.forgotTitle : mode === 'login' ? t.loginTitle : t.registerTitle}</h1>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
           {success && <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg text-sm">{success}</div>}
           {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">{error}</div>}
 
+          {forgot ? (
+            <form onSubmit={handleForgot} className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t.forgotHint}</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.email}</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
+              </div>
+              <button type="submit" disabled={loading} className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors text-sm">
+                {loading ? t.loading : t.sendResetLink}
+              </button>
+              <button type="button" onClick={() => { setForgot(false); setError(''); setSuccess('') }} className="w-full text-sm text-brand-600 hover:underline">← {t.backToLogin}</button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Username (register only) */}
             {mode === 'register' && (
@@ -152,6 +180,12 @@ function AuthForm() {
               </div>
             </div>
 
+            {mode === 'login' && (
+              <div className="-mt-2 text-right">
+                <button type="button" onClick={() => { setForgot(true); setError(''); setSuccess('') }} className="text-xs text-brand-600 hover:underline">{t.forgotPassword}</button>
+              </div>
+            )}
+
             {/* Confirm password (register only) */}
             {mode === 'register' && (
               <div>
@@ -188,8 +222,9 @@ function AuthForm() {
               {loading ? t.loading : (mode === 'login' ? t.login : t.register)}
             </button>
           </form>
+          )}
 
-          <div className="mt-4 text-center text-sm text-gray-500">
+          {!forgot && <div className="mt-4 text-center text-sm text-gray-500">
             {mode === 'login' ? t.noAccount : t.hasAccount}{' '}
             <button
               onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
@@ -197,7 +232,7 @@ function AuthForm() {
             >
               {mode === 'login' ? t.register : t.login}
             </button>
-          </div>
+          </div>}
         </div>
       </div>
     </div>
