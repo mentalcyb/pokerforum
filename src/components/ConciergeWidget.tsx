@@ -36,22 +36,29 @@ export default function ConciergeWidget() {
   const [error, setError] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const lastId = useRef(0)
+  const polling = useRef(false)
 
   useEffect(() => {
     try { const s = localStorage.getItem(STORE); if (s) setSession(JSON.parse(s)) } catch {}
   }, [])
 
   async function poll(s: Session) {
+    // one request at a time: the timer and a just-sent message could otherwise fetch the same messages twice
+    if (polling.current) return
+    polling.current = true
     try {
       const res = await fetch(`/api/concierge/poll?id=${s.id}&token=${encodeURIComponent(s.token)}&after=${lastId.current}`, { cache: 'no-store' })
       if (res.status === 404) { try { localStorage.removeItem(STORE) } catch {}; setSession(null); setMsgs([]); lastId.current = 0; return }
       const j = await res.json()
       if (j.messages?.length) {
-        lastId.current = j.messages[j.messages.length - 1].id
-        setMsgs(m => [...m, ...j.messages])
+        lastId.current = Math.max(lastId.current, j.messages[j.messages.length - 1].id)
+        setMsgs(m => {
+          const seen = new Set(m.map(x => x.id))
+          return [...m, ...j.messages.filter((x: Msg) => !seen.has(x.id))]
+        })
         if (j.messages.some((m: Msg) => m.sender !== 'guest')) setTyping(false)
       }
-    } catch {}
+    } catch {} finally { polling.current = false }
   }
 
   useEffect(() => {
@@ -84,6 +91,7 @@ export default function ConciergeWidget() {
       await fetch('/api/concierge/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: session.id, token: session.token, text: body }) })
       // drop the local echo; the server copy arrives with the next poll
       setMsgs(m => m.filter(x => x.id > 0))
+      for (let i = 0; i < 20 && polling.current; i++) await new Promise(r => setTimeout(r, 100))
       await poll(session)
     } catch { setTyping(false) } finally { setBusy(false) }
   }
