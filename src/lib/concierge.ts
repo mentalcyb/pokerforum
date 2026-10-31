@@ -59,7 +59,7 @@ FACTS FROM THE TEAM (may be empty):
 ${knowledge || '(no details entered yet — say the team will confirm specifics)'}`
 
 // a greeting at the very start of a reply (the welcome message already said hello)
-const GREETING = /^\s*(hi|hello|hey|გამარჯობა|გაგიმარჯოს|привет|здравствуйте|вітаю|привіт|merhaba|selam|hallo|shalom|שלום|مرحبا|مرحباً|سلام)[\s!,.👋]*/iu
+const GREETING = /^\s*(hi|hello|hey|გამარჯობა|გაგიმარჯოს|привет|здравствуйте|вітаю|привіт|merhaba|selam|hallo|shalom|שלום|مرحبا|مرحباً|سلام)(\s|!|,|\.|\uD83D\uDC4B)*/i
 
 /** Bot answer to the visitor + Georgian translations for the team, in one call. */
 export async function botReply(lang: string, history: ConciergeMessage[], knowledge: string): Promise<{ reply: string; reply_ka: string; guest_ka: string; summary_ka: string }> {
@@ -72,7 +72,7 @@ Respond as JSON: {"reply": "<your answer to the visitor, in their language>", "r
   ], true)
   const j = parseJson(raw)
   const s = (k: string) => (typeof j[k] === 'string' ? (j[k] as string).trim() : '')
-  const noHello = (t: string) => t.replace(GREETING, '').replace(/^\s*[a-zа-яა-ჰ]/iu, c => c.toUpperCase()).trim()
+  const noHello = (t: string) => t.replace(GREETING, '').replace(/^\s*[a-zа-я]/i, c => c.toUpperCase()).trim()
   return { reply: noHello(s('reply')) || '…', reply_ka: noHello(s('reply_ka')), guest_ka: s('guest_ka'), summary_ka: s('summary_ka') }
 }
 
