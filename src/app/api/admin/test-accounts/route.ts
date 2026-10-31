@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
       user_metadata: { username }, app_metadata: { test_account: true },
     })
     if (error || !data.user) return NextResponse.json({ error: error?.message ?? 'create failed' }, { status: 500 })
-    const prof = await admin.from('profiles').insert({ id: data.user.id, username })
+    // the database may already create the profile row for every new user, so set the nickname either way
+    const prof = await admin.from('profiles').upsert({ id: data.user.id, username }, { onConflict: 'id' })
     if (prof.error) {
       await admin.auth.admin.deleteUser(data.user.id)
       return NextResponse.json({ error: prof.error.message }, { status: 500 })
