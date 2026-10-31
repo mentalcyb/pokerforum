@@ -20,19 +20,36 @@ export default function ResetPasswordPage() {
     const url = new URL(window.location.href)
     const code = url.searchParams.get('code')
     const tokenHash = url.searchParams.get('token_hash')
+    let settled = false
+    const finish = (ok: boolean) => { if (!settled) { settled = true; setReady(ok ? 'ok' : 'invalid') } }
+    // the recovery session can also arrive through the client's own URL handling
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) finish(true)
+    })
     ;(async () => {
       try {
-        // the link can arrive in any of Supabase's formats
-        if (code) await supabase.auth.exchangeCodeForSession(code)
-        else if (tokenHash) await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
-        // (the older "#access_token=…" format is picked up by the client automatically)
-        await new Promise(r => setTimeout(r, 300))
-        const { data } = await supabase.auth.getSession()
-        setReady(data.session ? 'ok' : 'invalid')
+        // works on any device: link with ?token_hash=… (see the e-mail template)
+        if (tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+          if (!error) return finish(true)
+        }
+        // ?code=… (only works in the browser that asked for the link)
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (!error) return finish(true)
+        }
+        // give the client a moment if it is still processing the link itself
+        for (let i = 0; i < 8 && !settled; i++) {
+          const { data } = await supabase.auth.getSession()
+          if (data.session) return finish(true)
+          await new Promise(r => setTimeout(r, 400))
+        }
+        finish(false)
       } catch {
-        setReady('invalid')
+        finish(false)
       }
     })()
+    return () => sub.subscription.unsubscribe()
   }, [])
 
   async function save(e: React.FormEvent) {
