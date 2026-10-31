@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import OwnerRoleControl from '@/components/OwnerRoleControl'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -164,6 +165,8 @@ export default function UserProfilePage() {
             )}
           </div>
         </div>
+
+        {!isOwnProfile && <OwnerRoleControl userId={profile.id} />}
 
         {/* Message form */}
         {showMsgForm && (
