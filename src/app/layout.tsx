@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import InstallApp from '@/components/InstallApp'
 import OwnerReturnBar from '@/components/OwnerReturnBar'
+import ConciergeWidget from '@/components/ConciergeWidget'
 
 export const metadata: Metadata = {
   // makes relative canonical/OG URLs absolute
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <InstallApp />
           <OwnerReturnBar />
+          <ConciergeWidget />
         </PresenceProvider>
         </AppProvider>
       </body>
