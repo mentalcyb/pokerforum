@@ -3,6 +3,7 @@ import React from 'react'
 
 export type AvatarId = 'spade' | 'heart' | 'diamond' | 'club' | 'chip' | 'ace' | 'ninja'
   | 'fish' | 'shark' | 'whale' | 'donkey' | 'octopus' | 'frog' | 'cat' | 'owl' | 'crab'
+  | 'shadow' | 'tennis' | 'fighter' | 'baller'
 
 export const AVATARS: { id: AvatarId; label: string; bg: string; svg: React.ReactNode }[] = [
   {
@@ -292,6 +293,85 @@ export const AVATARS: { id: AvatarId; label: string; bg: string; svg: React.Reac
         <path d="M15 27C17.5 29.5 22.5 29.5 25 27" stroke="#7f1d1d" strokeWidth="1.3" strokeLinecap="round"/>
         <circle cx="12.5" cy="25" r="1.4" fill="#fca5a5"/>
         <circle cx="27.5" cy="25" r="1.4" fill="#fca5a5"/>
+      </svg>
+    ),
+  },
+  // ── Sports & the shadow ninja (original cartoons — not real people) ──
+  {
+    id: 'shadow',
+    label: 'Shadow ninja',
+    bg: 'bg-violet-800',
+    svg: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <path d="M7 36C7 29 12.5 26 20 26C27.5 26 33 29 33 36Z" fill="#111827"/>
+        <path d="M20 7C13.4 7 10 11.6 10 17.5C10 23.6 14.3 28 20 28C25.7 28 30 23.6 30 17.5C30 11.6 26.6 7 20 7Z" fill="#1f2937"/>
+        <path d="M11.5 15.5H28.5V20.5H11.5Z" fill="#e8c9a6"/>
+        <path d="M13.5 17.4L18 18.3M26.5 17.4L22 18.3" stroke="#111827" strokeWidth="1.1" strokeLinecap="round"/>
+        <ellipse cx="16" cy="19" rx="1.5" ry="1" fill="#111827"/>
+        <ellipse cx="24" cy="19" rx="1.5" ry="1" fill="#111827"/>
+        <path d="M11 20.5C14 23 26 23 29 20.5V24C26 27 14 27 11 24Z" fill="#111827"/>
+        <path d="M10 13H30" stroke="#dc2626" strokeWidth="2.2" strokeLinecap="round"/>
+        <path d="M10.5 13L6 10.5M10.5 13.5L5.5 14.5" stroke="#dc2626" strokeWidth="1.6" strokeLinecap="round"/>
+        <g transform="translate(31 30) rotate(15)">
+          <path d="M0 -4.5L1.2 -1.2L4.5 0L1.2 1.2L0 4.5L-1.2 1.2L-4.5 0L-1.2 -1.2Z" fill="#cbd5e1"/>
+          <circle r="0.9" fill="#475569"/>
+        </g>
+      </svg>
+    ),
+  },
+  {
+    id: 'tennis',
+    label: 'Tennis ball',
+    bg: 'bg-blue-700',
+    svg: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <path d="M29 30L36 37" stroke="#7c2d12" strokeWidth="2.6" strokeLinecap="round"/>
+        <ellipse cx="31.5" cy="25.5" rx="4.2" ry="5.5" transform="rotate(-45 31.5 25.5)" stroke="#e5e7eb" strokeWidth="1.4" fill="none"/>
+        <circle cx="18" cy="21" r="13" fill="#d9f99d"/>
+        <path d="M6.5 15C11 17 11 25 6.5 27.5M29.5 14.5C25 17 25 25 29.5 27.5" stroke="white" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+        <rect x="5.5" y="11" width="25" height="4" rx="1.6" fill="#ef4444"/>
+        <path d="M30 12.5L34 10.5M30 14L34.5 14" stroke="#ef4444" strokeWidth="1.6" strokeLinecap="round"/>
+        <circle cx="14" cy="20" r="2.4" fill="white"/><circle cx="22" cy="20" r="2.4" fill="white"/>
+        <circle cx="14.6" cy="20.3" r="1.2" fill="#111827"/><circle cx="22.6" cy="20.3" r="1.2" fill="#111827"/>
+        <path d="M13.5 25.5C16 28 20.5 28 23 25.5" stroke="#365314" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'fighter',
+    label: 'Fighter',
+    bg: 'bg-red-700',
+    svg: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <path d="M20 4L31 8.5L35.5 19.5L31 30.5L20 35L9 30.5L4.5 19.5L9 8.5Z" stroke="white" strokeOpacity="0.25" strokeWidth="1.2"/>
+        <ellipse cx="20" cy="18.5" rx="9.5" ry="10.5" fill="#e0ac7c"/>
+        <path d="M10.5 15.5C10.5 10 14.5 8 20 8C25.5 8 29.5 10 29.5 15.5C27 12.5 13 12.5 10.5 15.5Z" fill="#292524"/>
+        <ellipse cx="10.3" cy="19" rx="2" ry="2.8" fill="#c48a5c"/><ellipse cx="29.7" cy="19" rx="2" ry="2.8" fill="#c48a5c"/>
+        <path d="M14 16.2L18 17.4M26 16.2L22 17.4" stroke="#292524" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="16.3" cy="19" r="1.2" fill="#111827"/><circle cx="23.7" cy="19" r="1.2" fill="#111827"/>
+        <path d="M15 23.5H25C25 26.5 22.8 27.6 20 27.6C17.2 27.6 15 26.5 15 23.5Z" fill="#2563eb"/>
+        <path d="M16.5 24.6H23.5" stroke="white" strokeWidth="0.9"/>
+        <rect x="24" y="12.5" width="4" height="1.6" rx="0.6" fill="#fde68a" transform="rotate(20 26 13.3)"/>
+        <rect x="3" y="27" width="10" height="9" rx="4" fill="#111827"/><rect x="27" y="27" width="10" height="9" rx="4" fill="#111827"/>
+        <path d="M4.5 29.5H11.5M28.5 29.5H35.5" stroke="#dc2626" strokeWidth="1.3"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'baller',
+    label: 'Basketball',
+    bg: 'bg-indigo-900',
+    svg: (
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <circle cx="20" cy="21" r="14" fill="#f97316"/>
+        <path d="M6 21H34M20 7V35" stroke="#7c2d12" strokeWidth="1.2"/>
+        <path d="M10 10.5C14 15 14 27 10 31.5M30 10.5C26 15 26 27 30 31.5" stroke="#7c2d12" strokeWidth="1.2" fill="none"/>
+        <rect x="6" y="11.5" width="28" height="4" rx="1.6" fill="white"/>
+        <path d="M6 13.5H34" stroke="#3b82f6" strokeWidth="1"/>
+        <circle cx="15" cy="20.5" r="2.5" fill="white"/><circle cx="25" cy="20.5" r="2.5" fill="white"/>
+        <circle cx="15.5" cy="20.8" r="1.2" fill="#111827"/><circle cx="25.5" cy="20.8" r="1.2" fill="#111827"/>
+        <path d="M15 26C17.5 29 22.5 29 25 26Z" fill="#7c2d12"/>
+        <path d="M16.5 26.4H23.5" stroke="white" strokeWidth="1"/>
       </svg>
     ),
   },
