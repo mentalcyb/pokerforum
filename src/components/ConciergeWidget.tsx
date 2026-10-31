@@ -8,16 +8,16 @@ const LANGS: [string, string][] = [
   ['fa', 'فارسی'], ['uk', 'Українська'], ['de', 'Deutsch'], ['ka', 'ქართული'],
 ]
 const RTL = new Set(['he', 'ar', 'fa'])
-const UI: Record<string, { promises: [string, string, string]; placeholder: string; send: string; team: string; title: string }> = {
-  en: { title: 'Poker trip to Georgia', promises: ['We talk to the landlord for you', 'We show you the way from your place to the poker room', 'We find you the best price'], placeholder: 'Type a message…', send: 'Send', team: 'Team' },
-  ru: { title: 'Покерная поездка в Грузию', promises: ['Сами поговорим с арендодателем', 'Покажем дорогу от жилья до покер-рума', 'Найдём лучшую цену'], placeholder: 'Напишите сообщение…', send: 'Отправить', team: 'Команда' },
-  tr: { title: 'Gürcistan’a poker gezisi', promises: ['Ev sahibiyle sizin yerinize konuşuruz', 'Konaklamanızdan poker salonuna yolu gösteririz', 'En iyi fiyatı buluruz'], placeholder: 'Mesaj yazın…', send: 'Gönder', team: 'Ekip' },
-  he: { title: 'טיול פוקר לגאורגיה', promises: ['נדבר עם המשכיר במקומכם', 'נראה לכם את הדרך לחדר הפוקר', 'נמצא לכם את המחיר הטוב ביותר'], placeholder: 'כתבו הודעה…', send: 'שלח', team: 'צוות' },
-  ar: { title: 'رحلة بوكر إلى جورجيا', promises: ['نتحدث مع المؤجّر نيابةً عنك', 'نريك الطريق إلى صالة البوكر', 'نجد لك أفضل سعر'], placeholder: 'اكتب رسالة…', send: 'إرسال', team: 'الفريق' },
-  fa: { title: 'سفر پوکر به گرجستان', promises: ['به جای شما با صاحبخانه صحبت می‌کنیم', 'مسیر تا سالن پوکر را نشانتان می‌دهیم', 'بهترین قیمت را پیدا می‌کنیم'], placeholder: 'پیام بنویسید…', send: 'ارسال', team: 'تیم' },
-  uk: { title: 'Покерна поїздка до Грузії', promises: ['Самі поговоримо з орендодавцем', 'Покажемо дорогу від житла до покер-руму', 'Знайдемо найкращу ціну'], placeholder: 'Напишіть повідомлення…', send: 'Надіслати', team: 'Команда' },
-  de: { title: 'Pokerreise nach Georgien', promises: ['Wir sprechen für dich mit dem Vermieter', 'Wir zeigen dir den Weg zum Pokerraum', 'Wir finden den besten Preis'], placeholder: 'Nachricht schreiben…', send: 'Senden', team: 'Team' },
-  ka: { title: 'პოკერ ტური საქართველოში', promises: ['დაველაპარაკებით გამქირავებელს თქვენს მაგივრად', 'გაჩვენებთ გზას სახლიდან პოკერ რუმამდე', 'ვეცდებით მოგიძებნოთ საუკეთესო ფასად'], placeholder: 'დაწერე შეტყობინება…', send: 'გაგზავნა', team: 'გუნდი' },
+const UI: Record<string, { promises: [string, string, string]; placeholder: string; send: string; team: string; title: string; ended?: string; again?: string }> = {
+  en: { title: 'Poker trip to Georgia', promises: ['We talk to the landlord for you', 'We show you the way from your place to the poker room', 'We find you the best price'], placeholder: 'Type a message…', send: 'Send', team: 'Team', ended: 'This conversation has ended. Thank you!', again: 'Start a new chat' },
+  ru: { title: 'Покерная поездка в Грузию', promises: ['Сами поговорим с арендодателем', 'Покажем дорогу от жилья до покер-рума', 'Найдём лучшую цену'], placeholder: 'Напишите сообщение…', send: 'Отправить', team: 'Команда', ended: 'Разговор завершён. Спасибо!', again: 'Начать новый чат' },
+  tr: { title: 'Gürcistan’a poker gezisi', promises: ['Ev sahibiyle sizin yerinize konuşuruz', 'Konaklamanızdan poker salonuna yolu gösteririz', 'En iyi fiyatı buluruz'], placeholder: 'Mesaj yazın…', send: 'Gönder', team: 'Ekip', ended: 'Bu sohbet sona erdi. Teşekkürler!', again: 'Yeni sohbet başlat' },
+  he: { title: 'טיול פוקר לגאורגיה', promises: ['נדבר עם המשכיר במקומכם', 'נראה לכם את הדרך לחדר הפוקר', 'נמצא לכם את המחיר הטוב ביותר'], placeholder: 'כתבו הודעה…', send: 'שלח', team: 'צוות', ended: 'השיחה הסתיימה. תודה!', again: 'התחילו צ׳אט חדש' },
+  ar: { title: 'رحلة بوكر إلى جورجيا', promises: ['نتحدث مع المؤجّر نيابةً عنك', 'نريك الطريق إلى صالة البوكر', 'نجد لك أفضل سعر'], placeholder: 'اكتب رسالة…', send: 'إرسال', team: 'الفريق', ended: 'انتهت هذه المحادثة. شكراً!', again: 'ابدأ محادثة جديدة' },
+  fa: { title: 'سفر پوکر به گرجستان', promises: ['به جای شما با صاحبخانه صحبت می‌کنیم', 'مسیر تا سالن پوکر را نشانتان می‌دهیم', 'بهترین قیمت را پیدا می‌کنیم'], placeholder: 'پیام بنویسید…', send: 'ارسال', team: 'تیم', ended: 'این گفتگو به پایان رسید. ممنون!', again: 'شروع گفتگوی جدید' },
+  uk: { title: 'Покерна поїздка до Грузії', promises: ['Самі поговоримо з орендодавцем', 'Покажемо дорогу від житла до покер-руму', 'Знайдемо найкращу ціну'], placeholder: 'Напишіть повідомлення…', send: 'Надіслати', team: 'Команда', ended: 'Розмову завершено. Дякуємо!', again: 'Почати новий чат' },
+  de: { title: 'Pokerreise nach Georgien', promises: ['Wir sprechen für dich mit dem Vermieter', 'Wir zeigen dir den Weg zum Pokerraum', 'Wir finden den besten Preis'], placeholder: 'Nachricht schreiben…', send: 'Senden', team: 'Team', ended: 'Dieses Gespräch ist beendet. Danke!', again: 'Neuen Chat starten' },
+  ka: { title: 'პოკერ ტური საქართველოში', promises: ['დაველაპარაკებით გამქირავებელს თქვენს მაგივრად', 'გაჩვენებთ გზას სახლიდან პოკერ რუმამდე', 'ვეცდებით მოგიძებნოთ საუკეთესო ფასად'], placeholder: 'დაწერე შეტყობინება…', send: 'გაგზავნა', team: 'გუნდი', ended: 'საუბარი დასრულდა. მადლობა!', again: 'ახალი ჩატის დაწყება' },
 }
 const STORE = 'pf-concierge'
 const HIDDEN = [/^\/admin/, /^\/home-games\/.+/]
@@ -34,6 +34,7 @@ export default function ConciergeWidget() {
   const [busy, setBusy] = useState(false)
   const [typing, setTyping] = useState(false)
   const [error, setError] = useState(false)
+  const [closed, setClosed] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const lastId = useRef(0)
   const polling = useRef(false)
@@ -50,6 +51,7 @@ export default function ConciergeWidget() {
       const res = await fetch(`/api/concierge/poll?id=${s.id}&token=${encodeURIComponent(s.token)}&after=${lastId.current}`, { cache: 'no-store' })
       if (res.status === 404) { try { localStorage.removeItem(STORE) } catch {}; setSession(null); setMsgs([]); lastId.current = 0; return }
       const j = await res.json()
+      setClosed(!!j.closed)
       if (j.messages?.length) {
         lastId.current = Math.max(lastId.current, j.messages[j.messages.length - 1].id)
         setMsgs(m => {
@@ -88,7 +90,9 @@ export default function ConciergeWidget() {
     setText(''); setBusy(true); setTyping(true)
     setMsgs(m => [...m, { id: -Date.now(), sender: 'guest', text: body }])
     try {
-      await fetch('/api/concierge/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: session.id, token: session.token, text: body }) })
+      const r = await fetch('/api/concierge/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: session.id, token: session.token, text: body }) })
+      const rj = await r.json().catch(() => ({}))
+      if (rj.closed) { setClosed(true); setTyping(false); setMsgs(m => m.filter(x => x.id > 0)); return }
       // drop the local echo; the server copy arrives with the next poll
       setMsgs(m => m.filter(x => x.id > 0))
       for (let i = 0; i < 20 && polling.current; i++) await new Promise(r => setTimeout(r, 100))
@@ -152,12 +156,20 @@ export default function ConciergeWidget() {
                 {typing && <div className="text-xs text-gray-400 px-2">…</div>}
                 <div ref={endRef} />
               </div>
+              {closed ? (
+              <div className="p-3 border-t border-gray-100 dark:border-gray-800 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{ui.ended}</p>
+                <button onClick={() => { try { localStorage.removeItem(STORE) } catch {}; setSession(null); setMsgs([]); setClosed(false); lastId.current = 0 }}
+                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold">{ui.again}</button>
+              </div>
+              ) : (
               <div className="p-2 border-t border-gray-100 dark:border-gray-800 flex gap-2">
                 <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} dir={rtl ? 'rtl' : 'ltr'}
                   placeholder={ui.placeholder} maxLength={1500}
                   className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 <button onClick={send} disabled={busy || !text.trim()} className="px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold disabled:opacity-50">{ui.send}</button>
               </div>
+              )}
             </>
           )}
         </div>

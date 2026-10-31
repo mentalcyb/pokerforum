@@ -10,6 +10,8 @@ export async function POST(req: NextRequest) {
   const { id, token, text } = await req.json().catch(() => ({}))
   const chat = await guestChat(id, token)
   if (!chat) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // the team closed this conversation: the visitor starts a new one
+  if (chat.status === 'done') return NextResponse.json({ closed: true })
   const msg = String(text ?? '').trim().slice(0, 1500)
   if (!msg) return NextResponse.json({ error: 'empty' }, { status: 400 })
   const admin = createAdminClient()
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { data: saved } = await admin.from('concierge_messages').insert({ chat_id: chat.id, sender: 'guest', text: msg }).select('id').single()
   const isFirst = chat.status === 'new'
-  await admin.from('concierge_chats').update({ status: chat.status === 'done' ? 'active' : chat.status === 'new' ? 'active' : chat.status, unread: true, updated_at: new Date().toISOString() }).eq('id', chat.id)
+  await admin.from('concierge_chats').update({ status: 'active', unread: true, updated_at: new Date().toISOString() }).eq('id', chat.id)
 
   if (chat.human) {
     // a person is answering: just translate for them
