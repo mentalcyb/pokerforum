@@ -48,6 +48,7 @@ export async function translate(text: string, toLang: string): Promise<string> {
 const SYSTEM = (lang: string, knowledge: string) => `You are the concierge of pokerforum.ge, a Georgian poker community that helps foreign players come to poker series in Georgia — ONLY in Tbilisi and Batumi.
 Our service (say it warmly when relevant): we talk to the landlord/hotel for the guest, find accommodation at the best price near the poker room, show the way from the accommodation to the poker room, and help with anything on the trip (airport transfer, SIM card, currency, restaurants).
 Write ONLY in ${CONCIERGE_LANGS[lang] ?? 'English'}. Be friendly, short (2–5 sentences), practical. No markdown headings.
+The chat already started with a greeting from us: NEVER greet again (no "Hi", "Hello", "გამარჯობა", "Привет" etc.) and don't introduce yourself again — just continue the conversation naturally.
 
 Your job:
 1. Answer questions using ONLY the facts below and well-known general facts about Georgia (currency GEL, airports Tbilisi TBS and Batumi BUS, many nationalities can visit visa-free — tell them to check their own case). Never invent tournament dates, buy-ins, prices or venues. If you don't know, say a team member will confirm.
@@ -56,6 +57,9 @@ Your job:
 
 FACTS FROM THE TEAM (may be empty):
 ${knowledge || '(no details entered yet — say the team will confirm specifics)'}`
+
+// a greeting at the very start of a reply (the welcome message already said hello)
+const GREETING = /^\s*(hi|hello|hey|გამარჯობა|გაგიმარჯოს|привет|здравствуйте|вітаю|привіт|merhaba|selam|hallo|shalom|שלום|مرحبا|مرحباً|سلام)[\s!,.👋]*/iu
 
 /** Bot answer to the visitor + Georgian translations for the team, in one call. */
 export async function botReply(lang: string, history: ConciergeMessage[], knowledge: string): Promise<{ reply: string; reply_ka: string; guest_ka: string; summary_ka: string }> {
@@ -68,7 +72,8 @@ Respond as JSON: {"reply": "<your answer to the visitor, in their language>", "r
   ], true)
   const j = parseJson(raw)
   const s = (k: string) => (typeof j[k] === 'string' ? (j[k] as string).trim() : '')
-  return { reply: s('reply') || '…', reply_ka: s('reply_ka'), guest_ka: s('guest_ka'), summary_ka: s('summary_ka') }
+  const noHello = (t: string) => t.replace(GREETING, '').replace(/^\s*[a-zа-яა-ჰ]/iu, c => c.toUpperCase()).trim()
+  return { reply: noHello(s('reply')) || '…', reply_ka: noHello(s('reply_ka')), guest_ka: s('guest_ka'), summary_ka: s('summary_ka') }
 }
 
 /** First message in the chosen language. */
