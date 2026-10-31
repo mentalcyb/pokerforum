@@ -236,35 +236,46 @@ export default function AdminPage() {
     setSecurityLoading(false)
   }
 
+  // all member changes go through the server, which checks who may do what
+  async function userAction(action: string, userId: string): Promise<boolean> {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+      body: JSON.stringify({ action, userId }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error === 'admins_only' ? t.adminsOnlyAction : j.error === 'owner' ? t.ownerProtected : (j.error ?? t.adminFailedToLoad))
+    }
+    return res.ok
+  }
+
   async function banFromSecurity(userId: string, current: boolean) {
     if (!confirm(current ? t.confirmUnban : t.confirmBan)) return
-    await supabase.from('profiles').update({ is_banned: !current }).eq('id', userId)
-    setSecurityUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
+    if (await userAction(current ? 'unban' : 'ban', userId))
+      setSecurityUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
   }
 
   // --- Users ---
   async function toggleAdmin(userId: string, current: boolean) {
-    await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId)
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
+    if (await userAction(current ? 'unadmin' : 'admin', userId))
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
   }
 
   async function toggleMod(userId: string, current: boolean) {
-    await supabase.from('profiles').update({ is_moderator: !current }).eq('id', userId)
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_moderator: !current } : u))
+    if (await userAction(current ? 'unmod' : 'mod', userId))
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_moderator: !current } : u))
   }
 
   async function toggleBan(userId: string, current: boolean) {
     if (!confirm(current ? t.confirmUnban : t.confirmBan)) return
-    await supabase.from('profiles').update({ is_banned: !current }).eq('id', userId)
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
+    if (await userAction(current ? 'unban' : 'ban', userId))
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
   }
 
   async function deleteUser(userId: string) {
     if (!confirm(t.confirmDeleteUser)) return
-    await supabase.from('posts').delete().eq('user_id', userId)
-    await supabase.from('replies').delete().eq('user_id', userId)
-    await supabase.from('profiles').delete().eq('id', userId)
-    setUsers(prev => prev.filter(u => u.id !== userId))
+    if (await userAction('delete', userId)) setUsers(prev => prev.filter(u => u.id !== userId))
   }
 
   if (loading) return (
@@ -823,6 +834,7 @@ export default function AdminPage() {
                   <div className="text-xs text-gray-400 mt-0.5">{new Date(user.created_at).toLocaleDateString()}</div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 flex-shrink-0">
+                  {currentUserIsAdmin && <>
                   <button onClick={() => toggleAdmin(user.id, user.is_admin)}
                     className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_admin ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-amber-200 text-amber-600 hover:bg-amber-50'}`}>
                     {user.is_admin ? t.removeAdmin : t.makeAdmin}
@@ -831,14 +843,19 @@ export default function AdminPage() {
                     className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_moderator ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}>
                     {user.is_moderator ? t.removeMod : t.makeMod}
                   </button>
+                  </>}
+                  {(currentUserIsAdmin || (!user.is_admin && !user.is_moderator)) && (
                   <button onClick={() => toggleBan(user.id, user.is_banned)}
                     className={`px-2.5 py-1 text-xs border rounded-lg transition-colors ${user.is_banned ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-orange-200 text-orange-600 hover:bg-orange-50'}`}>
                     {user.is_banned ? t.unbanUser : t.banUser}
                   </button>
+                  )}
+                  {currentUserIsAdmin && (
                   <button onClick={() => deleteUser(user.id)}
                     className="px-2.5 py-1 text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 hover:bg-red-100 transition-colors">
                     {t.delete}
                   </button>
+                  )}
                 </div>
               </div>
             ))
