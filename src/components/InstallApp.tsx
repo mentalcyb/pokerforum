@@ -8,7 +8,7 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{
 const DISMISS_KEY = 'pf-install-dismissed'
 const VISITS_KEY = 'pf-visits'
 const DISMISS_DAYS = 30
-const FIRST_VISIT_DELAY_MS = 25_000
+const FIRST_VISIT_DELAY_MS = 10_000
 const RETURN_VISIT_DELAY_MS = 5_000
 /** Never cover these pages (a game in progress, signing in). */
 const QUIET_PATHS = [/^\/home-games\/.+/, /^\/auth/]
@@ -58,7 +58,7 @@ export function openInstallCard() {
 
 /**
  * Registers the service worker and gently offers "Install the app" on phones:
- * a small card at the bottom — on a return visit (or after 25s on the first one), never during a game,
+ * a small card at the bottom — on a return visit (or after 10s on the first one), never during a game,
  * and after ✕ not again for 30 days. The menu item can always open it on request.
  */
 export default function InstallApp() {
