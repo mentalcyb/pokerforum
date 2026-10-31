@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import AppStatsCard from '@/components/AppStatsCard'
 import OwnerTools from '@/components/OwnerTools'
+import AdminConcierge from '@/components/AdminConcierge'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useApp } from '@/contexts/AppContext'
@@ -33,7 +34,7 @@ export default function AdminPage() {
   const [posts, setPosts] = useState<PostRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [tournaments, setTournaments] = useState<TournamentRow[]>([])
-  const [tab, setTab] = useState<'posts' | 'users' | 'categories' | 'tournaments' | 'security'>('posts')
+  const [tab, setTab] = useState<'posts' | 'users' | 'categories' | 'tournaments' | 'security' | 'concierge'>('posts')
   const [securityUsers, setSecurityUsers] = useState<SecurityUser[]>([])
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [securityLoading, setSecurityLoading] = useState(false)
@@ -318,7 +319,12 @@ export default function AdminPage() {
             {t.securityTab}
           </button>
         )}
+        {(currentUserIsAdmin || isOwner) && (
+          <button onClick={() => setTab('concierge')} className={tabClass('concierge')}>💬 სტუმრების ჩატი</button>
+        )}
       </div>
+
+      {tab === 'concierge' && <AdminConcierge />}
 
       {/* ── POSTS TAB ── */}
       {tab === 'posts' && (
