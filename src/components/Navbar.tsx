@@ -18,6 +18,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [liveCount, setLiveCount] = useState(0)
   const [canInstall, setCanInstall] = useState(false)
+  const [chatUnread, setChatUnread] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const supabase = createClient()
@@ -27,6 +28,14 @@ export default function Navbar() {
       const { data: p } = await supabase
         .from('profiles').select('is_admin, is_moderator, avatar').eq('id', uid).single()
       if (p) {
+        if (p.is_admin) {
+          const check = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            const r = await fetch('/api/admin/concierge?count=1', { headers: { Authorization: `Bearer ${session?.access_token ?? ''}` } }).catch(() => null)
+            if (r?.ok) setChatUnread((await r.json()).unread ?? 0)
+          }
+          check(); setInterval(check, 30000)
+        }
         setIsAdmin(p.is_admin || false)
         setIsMod(p.is_moderator || false)
         setAvatar(p.avatar || 'spade')
@@ -124,6 +133,12 @@ export default function Navbar() {
                 <Link href="/admin" title={isAdmin ? t.adminBadge : t.isModerator}
                   className="px-2.5 py-1.5 text-sm text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium">
                   {isAdmin ? '⚙️' : '🛡️'}<span className="hidden xl:inline ml-1">{isAdmin ? t.adminBadge : t.isModerator}</span>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link href="/chats" title="სტუმრების ჩატი" className="relative flex items-center justify-center w-8 h-8 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  💬
+                  {chatUnread > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">{chatUnread}</span>}
                 </Link>
               )}
               <Link href="/new-post" className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg transition-colors font-medium">
@@ -263,12 +278,17 @@ export default function Navbar() {
                 )}
               </Link>
 
-              {isAdmin && (
+              {isAdmin && (<>
+                <Link href="/chats" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <span className="text-lg">💬</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">სტუმრების ჩატი</span>
+                  {chatUnread > 0 && <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">{chatUnread}</span>}
+                </Link>
                 <Link href="/admin" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
                   <span className="text-lg">⚙️</span>
                   <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{t.adminBadge}</span>
                 </Link>
-              )}
+              </>)}
 
               <button onClick={handleLogout} className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

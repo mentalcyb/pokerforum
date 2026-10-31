@@ -12,5 +12,5 @@ export async function GET(req: NextRequest) {
   if (!chat) return NextResponse.json({ error: 'not found' }, { status: 404 })
   const { data } = await createAdminClient().from('concierge_messages').select('id, sender, text, created_at')
     .eq('chat_id', chat.id).gt('id', Number(p.get('after') ?? 0)).order('id')
-  return NextResponse.json({ messages: data ?? [], lang: chat.lang, human: chat.human })
+  return NextResponse.json({ messages: data ?? [], lang: chat.lang, human: chat.human, closed: chat.status === 'done' })
 }

@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
   if (!(await allowed(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const admin = createAdminClient()
   const p = req.nextUrl.searchParams
+  if (p.get('count')) {
+    const { count } = await admin.from('concierge_chats').select('id', { count: 'exact', head: true }).eq('unread', true).neq('status', 'new').neq('status', 'done')
+    return NextResponse.json({ unread: count ?? 0 })
+  }
   if (p.get('knowledge')) {
     const { data } = await admin.from('concierge_settings').select('knowledge').eq('id', 1).maybeSingle()
     return NextResponse.json({ knowledge: data?.knowledge ?? '' })
@@ -64,7 +68,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
   if (body.action === 'status' && ['active', 'done'].includes(body.status)) {
-    await admin.from('concierge_chats').update({ status: body.status }).eq('id', chat.id)
+    await admin.from('concierge_chats').update({ status: body.status, unread: false }).eq('id', chat.id)
+    return NextResponse.json({ ok: true })
+  }
+  if (body.action === 'delete') {
+    await admin.from('concierge_chats').delete().eq('id', chat.id)
     return NextResponse.json({ ok: true })
   }
   return NextResponse.json({ error: 'bad request' }, { status: 400 })

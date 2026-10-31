@@ -52,7 +52,14 @@ export default function AdminConcierge() {
     setReply(''); setSel({ ...sel, human: true }); await loadMsgs(sel); setBusy(false)
   }
   async function setBot(on: boolean) { if (!sel) return; await api('POST', '', { action: 'bot', chat: sel.id, on }); setSel({ ...sel, human: !on }); loadChats() }
-  async function setDone() { if (!sel) return; await api('POST', '', { action: 'status', chat: sel.id, status: 'done' }); setSel({ ...sel, status: 'done' }); loadChats() }
+  async function setStatus(status: 'done' | 'active') {
+    if (!sel || (status === 'done' && !confirm('დავასრულოთ საუბარი? სტუმარი ვეღარ მოწერს ამ ჩატში (ახლის დაწყება შეეძლება).'))) return
+    await api('POST', '', { action: 'status', chat: sel.id, status }); setSel({ ...sel, status }); loadChats()
+  }
+  async function remove() {
+    if (!sel || !confirm('წავშალოთ ეს ჩატი სამუდამოდ?')) return
+    await api('POST', '', { action: 'delete', chat: sel.id }); setSel(null); setMsgs([]); loadChats()
+  }
   async function openKnowledge() { setKnowledge((await api('GET', '?knowledge=1')).knowledge ?? '') }
   async function saveKnowledge() { await api('POST', '', { action: 'knowledge', text: knowledge }); setKSaved(true); setTimeout(() => setKSaved(false), 2000) }
 
@@ -102,9 +109,14 @@ export default function AdminConcierge() {
             <>
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-semibold text-gray-900 dark:text-white">{LANG_NAME[sel.lang]}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${sel.human ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{sel.human ? '👤 შენ პასუხობ' : '🤖 ბოტი პასუხობს'}</span>
+                {sel.status === 'done'
+                  ? <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">✓ დასრულებული</span>
+                  : <span className={`text-xs px-2 py-0.5 rounded-full ${sel.human ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{sel.human ? '👤 შენ პასუხობ' : '🤖 ბოტი პასუხობს'}</span>}
                 <button onClick={() => setBot(sel.human)} className="ml-auto text-xs px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700">{sel.human ? '🤖 ბოტს დავუბრუნოთ' : '👤 მე ვუპასუხებ'}</button>
-                {sel.status !== 'done' && <button onClick={setDone} className="text-xs px-2.5 py-1 rounded-lg border border-green-300 text-green-700">✓ დასრულდა</button>}
+                {sel.status !== 'done'
+                  ? <button onClick={() => setStatus('done')} className="text-xs px-2.5 py-1 rounded-lg border border-green-300 text-green-700">✓ დასრულება</button>
+                  : <button onClick={() => setStatus('active')} className="text-xs px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600">↺ თავიდან გახსნა</button>}
+                <button onClick={remove} className="text-xs px-2 py-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">🗑</button>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50 dark:bg-gray-950">
                 {msgs.map(m => (
@@ -118,12 +130,16 @@ export default function AdminConcierge() {
                 ))}
                 <div ref={endRef} />
               </div>
+              {sel.status === 'done' ? (
+                <div className="p-3 border-t border-gray-100 dark:border-gray-800 text-center text-xs text-gray-400">საუბარი დასრულებულია. გასაგრძელებლად „↺ თავიდან გახსნა“.</div>
+              ) : (
               <div className="p-2 border-t border-gray-100 dark:border-gray-800 flex gap-2">
                 <input value={reply} onChange={e => setReply(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
                   placeholder={`დაწერე ქართულად — ავტომატურად ითარგმნება: ${LANG_NAME[sel.lang]}`}
                   className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white" />
                 <button onClick={send} disabled={busy || !reply.trim()} className="px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold disabled:opacity-50">გაგზავნა</button>
               </div>
+              )}
             </>
           )}
         </div>
