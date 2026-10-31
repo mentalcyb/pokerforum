@@ -278,7 +278,7 @@ export default function Navbar() {
                 )}
               </Link>
 
-              {isAdmin && (
+              {isAdmin && (<>
                 <Link href="/chats" onClick={close} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <span className="text-lg">💬</span>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">სტუმრების ჩატი</span>
@@ -288,7 +288,7 @@ export default function Navbar() {
                   <span className="text-lg">⚙️</span>
                   <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{t.adminBadge}</span>
                 </Link>
-              )}
+              </>)}
 
               <button onClick={handleLogout} className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
