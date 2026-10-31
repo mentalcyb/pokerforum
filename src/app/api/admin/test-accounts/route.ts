@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { ownerFromRequest } from '@/lib/ownerAuth'
+import { makeReturnTicket } from '@/lib/ownerTicket'
 
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await ownerFromRequest(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const owner = await ownerFromRequest(req)
+  if (!owner) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const admin = createAdminClient()
 
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
   if (body.action === 'login') {
     const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email: user.email })
     if (error || !data.properties?.hashed_token) return NextResponse.json({ error: error?.message ?? 'link failed' }, { status: 500 })
-    return NextResponse.json({ token_hash: data.properties.hashed_token })
+    return NextResponse.json({ token_hash: data.properties.hashed_token, return_ticket: makeReturnTicket(owner.id) })
   }
 
   if (body.action === 'delete') {

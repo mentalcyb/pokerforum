@@ -41,10 +41,8 @@ export default function TestAccounts() {
     const r = await call('POST', { action: 'login', id: a.id })
     if (!r.ok) { setMsg(`⚠️ ${r.json.error}`); setBusy(false); return }
     const supabase = createClient()
-    // keep the owner's own session so the "back to my account" bar can return to it without a password
-    const { data: own } = await supabase.auth.getSession()
-    if (own.session) { try { localStorage.setItem(OWNER_KEY, own.session.refresh_token) } catch {} }
-    await supabase.auth.signOut({ scope: 'local' })
+    // signed ticket for the "back to my account" bar (works without a password)
+    try { localStorage.setItem(OWNER_KEY, r.json.return_ticket) } catch {}
     const { error } = await supabase.auth.verifyOtp({ token_hash: r.json.token_hash, type: 'magiclink' })
     if (error) { setMsg(`⚠️ ${error.message}`); setBusy(false); return }
     window.location.href = '/'
