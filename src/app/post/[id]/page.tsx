@@ -174,7 +174,7 @@ export default function PostPage() {
         .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
         .single()
       if (error) throw error
-      await supabase.from('posts').update({ reply_count: (post?.reply_count || 0) + 1 }).eq('id', params.id)
+      // reply_count is kept by the database (supabase/counts.sql)
       setReplies(prev => [...prev, data as any])
       setPost(prev => prev ? { ...prev, reply_count: prev.reply_count + 1 } : prev)
       setReplyText('')
