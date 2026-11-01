@@ -36,15 +36,18 @@ export default function CategoryPage() {
     try {
       const from = pageToLoad * PAGE_SIZE
       const to = from + PAGE_SIZE - 1
-      const [{ data: cat, error: catErr }, { data: ps, error: psErr }] = await Promise.all([
+      const postsBy = (col: string) => supabase
+        .from('posts')
+        .select('id, title, created_at, reply_count, view_count, profiles(username, avatar)')
+        .eq('category_id', params.id)
+        .order(col, { ascending: false })
+        .range(from, to)
+      let [{ data: cat, error: catErr }, { data: ps, error: psErr }] = await Promise.all([
         supabase.from('categories').select('*').eq('id', params.id).single(),
-        supabase
-          .from('posts')
-          .select('id, title, created_at, reply_count, view_count, profiles(username, avatar)')
-          .eq('category_id', params.id)
-          .order('created_at', { ascending: false })
-          .range(from, to),
+        postsBy('last_activity_at'),
       ])
+      // before supabase/last_activity.sql has been run
+      if (psErr) ({ data: ps, error: psErr } = await postsBy('created_at'))
       if (catErr) throw catErr
       if (psErr) throw psErr
       setCategory(cat)
