@@ -18,7 +18,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 type Category = { id: number; name: string; description: string; name_en?: string | null; description_en?: string | null; icon: string; post_count: number }
-type Post = { id: number; title: string; created_at: string; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string; name_en?: string | null } | null }
+type Post = { id: number; title: string; created_at: string; last_activity_at?: string | null; reply_count: number; view_count: number; profiles: { username: string }; categories: { name: string; name_en?: string | null } | null }
 type Stats = { members: number; posts: number; online: number }
 type OnlineUser = { id: string; username: string; avatar: string | null; is_admin: boolean }
 
@@ -106,10 +106,18 @@ export default function HomePage() {
         cats = catsFallback
       }
 
-      const { data: ps, error: psErr } = await supabase
+      // newest activity first (a reply brings a topic back up); falls back if the column isn't there yet
+      let { data: ps, error: psErr } = await supabase
         .from('posts')
-        .select('id, title, created_at, reply_count, view_count, profiles(username), categories(*)')
-        .order('created_at', { ascending: false }).limit(10)
+        .select('id, title, created_at, last_activity_at, reply_count, view_count, profiles(username), categories(*)')
+        .order('last_activity_at', { ascending: false }).limit(10)
+      if (psErr) {
+        const old = await supabase
+          .from('posts')
+          .select('id, title, created_at, reply_count, view_count, profiles(username), categories(*)')
+          .order('created_at', { ascending: false }).limit(10)
+        ps = old.data as typeof ps; psErr = old.error
+      }
       if (psErr) throw psErr
 
       setCategories(cats || [])
@@ -255,7 +263,7 @@ export default function HomePage() {
                   <div className="font-medium text-gray-900 dark:text-white text-sm leading-snug">{post.title}</div>
                   <div className="text-xs text-gray-400 mt-1">
                     <Link href={`/user/${encodeURIComponent(post.profiles?.username ?? '')}`} className="hover:text-brand-600 transition-colors">{post.profiles?.username}</Link>
-                    {' · '}{timeAgo(post.created_at)}
+                    {' · '}{timeAgo(post.last_activity_at ?? post.created_at)}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 text-xs text-gray-400 space-y-1">
