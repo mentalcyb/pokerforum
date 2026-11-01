@@ -61,8 +61,7 @@ function NewPostForm() {
       title, content, category_id: categoryId, user_id: user.id
     }).select().single()
     if (!error && data) {
-      const { data: cat } = await supabase.from('categories').select('post_count').eq('id', categoryId).single()
-      if (cat) await supabase.from('categories').update({ post_count: cat.post_count + 1 }).eq('id', categoryId)
+      // categories.post_count is kept by the database (supabase/counts.sql)
       fetch('/api/log-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: user.id, action: 'post' }) }).catch(() => {})
       router.push(`/post/${data.id}`)
     }
