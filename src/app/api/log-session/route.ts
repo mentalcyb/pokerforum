@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { clientIp } from '@/lib/clientIp'
 
-function getIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-    req.headers.get('x-real-ip') ||
-    'unknown'
-  )
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    const ip = getIp(req)
+    const ip = clientIp(req)
     const userAgent = req.headers.get('user-agent') || ''
 
     const admin = createAdminClient()
