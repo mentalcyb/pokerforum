@@ -66,8 +66,9 @@ export default function StreamsView({ streams }: { streams: Streamer[] }) {
       if (!session) return
       setToken(session.access_token)
       loadMine(session.access_token)
-      const { data: p } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()
-      if (p?.is_admin) { setIsAdmin(true); loadAll(session.access_token) }
+      // admins and members allowed to approve streamers get the approval panel (the server decides)
+      const res = await fetch('/api/streams/admin', { headers: auth(session.access_token) })
+      if (res.ok) { setIsAdmin(true); setAll((await res.json()).channels ?? []) }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

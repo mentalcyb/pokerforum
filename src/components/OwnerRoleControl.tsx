@@ -10,6 +10,8 @@ export default function OwnerRoleControl({ userId }: { userId: string }) {
   const { t } = useApp()
   const [role, setRole] = useState<Role | null>(null)
   const [busy, setBusy] = useState(false)
+  // null = the permission column doesn't exist yet
+  const [streams, setStreams] = useState<boolean | null>(null)
 
   async function token() {
     const { data } = await createClient().auth.getSession()
@@ -20,7 +22,7 @@ export default function OwnerRoleControl({ userId }: { userId: string }) {
     token().then(async tk => {
       if (!tk) return
       const res = await fetch(`/api/admin/set-role?userId=${encodeURIComponent(userId)}`, { headers: { Authorization: `Bearer ${tk}` } })
-      if (res.ok) setRole((await res.json()).role)
+      if (res.ok) { const j = await res.json(); setRole(j.role); setStreams(j.streams ?? null) }
     })
   }, [userId])
 
@@ -33,6 +35,17 @@ export default function OwnerRoleControl({ userId }: { userId: string }) {
       body: JSON.stringify({ userId, role: next }),
     })
     if (res.ok) setRole(next)
+    setBusy(false)
+  }
+
+  async function toggleStreams() {
+    if (streams === null) return
+    setBusy(true)
+    const res = await fetch('/api/admin/set-role', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+      body: JSON.stringify({ userId, streams: !streams }),
+    })
+    if (res.ok) setStreams(!streams)
     setBusy(false)
   }
 
@@ -49,6 +62,12 @@ export default function OwnerRoleControl({ userId }: { userId: string }) {
       {btn('member', t.role_member)}
       {btn('moderator', `🛡️ ${t.role_moderator}`)}
       {btn('admin', `⚙️ ${t.role_admin}`)}
+      {streams !== null && role !== 'admin' && (
+        <button onClick={toggleStreams} disabled={busy}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-60 ${streams ? 'bg-purple-600 border-purple-600 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+          📺 {t.permApproveStreams} {streams ? '✓' : ''}
+        </button>
+      )}
     </div>
   )
 }
