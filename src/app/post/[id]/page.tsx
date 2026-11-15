@@ -16,9 +16,20 @@ type Post = {
   reply_count: number; view_count: number; user_id: string
   profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean }; categories: { name: string; name_en?: string | null } | null
 }
-type Reply = { id: number; content: string; created_at: string; user_id?: string; profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean } }
+type Reply = { id: number; content: string; created_at: string; user_id?: string; reply_to?: number | null; profiles: { username: string; avatar?: string; signature?: string; is_moderator?: boolean } }
 
 const REPLY_PAGE_SIZE = 30
+const REPLY_FIELDS = 'id, content, created_at, user_id, reply_to, profiles(username, avatar, signature, is_moderator)'
+const REPLY_FIELDS_OLD = 'id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)'
+
+/** Short plain-text preview of a comment for the "replying to" quote. */
+function snippet(text: string, max = 110): string {
+  const plain = text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '🖼️')   // images
+    .replace(/https?:\/\/\S+/g, '🔗')            // links
+    .replace(/\s+/g, ' ').trim()
+  return plain.length > max ? plain.slice(0, max).trimEnd() + '…' : plain
+}
 
 export default function PostPage() {
   const { t, lang } = useApp()
@@ -26,6 +37,10 @@ export default function PostPage() {
   const router = useRouter()
   const [post, setPost] = useState<Post | null>(null)
   const [replies, setReplies] = useState<Reply[]>([])
+  // "reply to" a specific comment
+  const [replyTo, setReplyTo] = useState<Reply | null>(null)
+  const supportsReplyTo = replies.length === 0 || replies.some(r => 'reply_to' in r)
+  const [flash, setFlash] = useState<number | null>(null)
   const [hasMoreReplies, setHasMoreReplies] = useState(false)
   const [loadingMoreReplies, setLoadingMoreReplies] = useState(false)
   const [replyText, setReplyText] = useState('')
@@ -99,9 +114,15 @@ export default function PostPage() {
       // Fetch the most recent REPLY_PAGE_SIZE replies (newest first), then
       // reverse to chronological order for display — bounds the payload on
       // long-running threads instead of fetching every reply ever posted.
-      const { data: r, error: rErr } = await supabase.from('replies')
-        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
+      let { data: r, error: rErr } = await supabase.from('replies')
+        .select(REPLY_FIELDS)
         .eq('post_id', params.id).order('created_at', { ascending: false }).limit(REPLY_PAGE_SIZE)
+      if (rErr) {
+        // before supabase/reply_to.sql has been run
+        ({ data: r, error: rErr } = await supabase.from('replies')
+          .select(REPLY_FIELDS_OLD)
+          .eq('post_id', params.id).order('created_at', { ascending: false }).limit(REPLY_PAGE_SIZE) as any)
+      }
 
       let latestReplies: any = r
       if (rErr) {
@@ -169,11 +190,16 @@ export default function PostPage() {
     setLoading(true)
     setReplyError(null)
     try {
-      const { data, error } = await supabase.from('replies')
-        .insert({ content: replyText, user_id: user.id, post_id: params.id })
-        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
-        .single()
+      const base = { content: replyText, user_id: user.id, post_id: params.id }
+      let { data, error } = replyTo && supportsReplyTo
+        ? await supabase.from('replies').insert({ ...base, reply_to: replyTo.id }).select(REPLY_FIELDS).single()
+        : await supabase.from('replies').insert(base).select(supportsReplyTo ? REPLY_FIELDS : REPLY_FIELDS_OLD).single()
+      if (error && replyTo) {
+        // database without the reply_to column: keep the @mention in the text instead
+        ({ data, error } = await supabase.from('replies').insert(base).select(REPLY_FIELDS_OLD).single() as any)
+      }
       if (error) throw error
+      setReplyTo(null)
       // reply_count is kept by the database (supabase/counts.sql)
       setReplies(prev => [...prev, data as any])
       setPost(prev => prev ? { ...prev, reply_count: prev.reply_count + 1 } : prev)
@@ -192,7 +218,7 @@ export default function PostPage() {
     try {
       const oldest = replies[0].created_at
       const { data, error } = await supabase.from('replies')
-        .select('id, content, created_at, user_id, profiles(username, avatar, signature, is_moderator)')
+        .select(supportsReplyTo ? REPLY_FIELDS : REPLY_FIELDS_OLD)
         .eq('post_id', params.id)
         .lt('created_at', oldest)
         .order('created_at', { ascending: false })
@@ -206,6 +232,23 @@ export default function PostPage() {
     } finally {
       setLoadingMoreReplies(false)
     }
+  }
+
+  function startReply(r: Reply) {
+    setReplyTo(r)
+    const mention = `@${r.profiles?.username ?? ''} `
+    setReplyText(prev => prev.startsWith(mention) ? prev : mention + prev)
+    setTimeout(() => {
+      const ta = textareaRef.current
+      ta?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      ta?.focus()
+    }, 50)
+  }
+
+  function jumpTo(id: number) {
+    document.getElementById(`reply-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setFlash(id)
+    setTimeout(() => setFlash(null), 1600)
   }
 
   function insertAtCursor(text: string) {
@@ -364,8 +407,10 @@ export default function PostPage() {
           {loadingMoreReplies ? t.loading : `↑ ${t.loadEarlierReplies}`}
         </button>
       )}
-      {replies.map(r => (
-        <div key={r.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-3">
+      {replies.map(r => {
+        const parent = r.reply_to ? replies.find(x => x.id === r.reply_to) : null
+        return (
+        <div key={r.id} id={`reply-${r.id}`} className={`bg-white dark:bg-gray-900 rounded-2xl border p-5 mb-3 transition-colors scroll-mt-24 ${flash === r.id ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-gray-200 dark:border-gray-800'}`}>
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <Link href={`/user/${encodeURIComponent((r.profiles as any)?.username ?? '')}`}>
               <PokerAvatar avatarId={(r.profiles as any)?.avatar} size={28} className="hover:opacity-80 transition-opacity" />
@@ -382,14 +427,34 @@ export default function PostPage() {
               </button>
             )}
           </div>
+          {r.reply_to && (
+            parent ? (
+              <button type="button" onClick={() => jumpTo(parent.id)}
+                className="w-full text-left mb-3 pl-3 pr-2 py-2 border-l-4 border-brand-500 bg-gray-50 dark:bg-gray-800/60 rounded-r-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <div className="text-xs font-semibold text-brand-600">↩️ {parent.profiles?.username}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{snippet(parent.content)}</div>
+              </button>
+            ) : (
+              <div className="mb-3 pl-3 py-1.5 border-l-4 border-gray-300 dark:border-gray-600 text-xs text-gray-400">↩️ {t.replyToEarlier}</div>
+            )
+          )}
           <ContentRenderer content={r.content} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" />
+          {user && !isBanned && (
+            <div className="mt-3 flex justify-end">
+              <button type="button" onClick={() => startReply(r)}
+                className="text-xs font-medium text-gray-500 hover:text-brand-600 px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                ↩️ {t.replyToComment}
+              </button>
+            </div>
+          )}
           {(r.profiles as any)?.signature && (
             <div className="mt-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400 italic">
               {(r.profiles as any).signature}
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
 
       {/* Reply form */}
       {user ? (
@@ -402,6 +467,16 @@ export default function PostPage() {
             <div className="mb-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">{replyError}</div>
           )}
           <form onSubmit={handleReply} className="space-y-3">
+            {replyTo && (
+              <div className="flex items-start gap-2 pl-3 pr-2 py-2 border-l-4 border-brand-500 bg-gray-50 dark:bg-gray-800/60 rounded-r-lg">
+                <button type="button" onClick={() => jumpTo(replyTo.id)} className="flex-1 min-w-0 text-left">
+                  <div className="text-xs font-semibold text-brand-600">↩️ {t.replyingTo} {replyTo.profiles?.username}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{snippet(replyTo.content, 90)}</div>
+                </button>
+                <button type="button" onClick={() => { const m = `@${replyTo.profiles?.username ?? ''} `; setReplyText(p => p.startsWith(m) ? p.slice(m.length) : p); setReplyTo(null) }}
+                  className="text-gray-400 hover:text-gray-600 text-sm px-1" aria-label="cancel">✕</button>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={replyText}
