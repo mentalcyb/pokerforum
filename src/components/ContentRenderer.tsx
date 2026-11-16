@@ -46,8 +46,15 @@ function parseContent(text: string): Segment[] {
   let match: RegExpExecArray | null
 
   while ((match = re.exec(text)) !== null) {
-    const url = match[0]
+    let url = match[0]
     const start = match.index
+    // uploaded photo links end in their extension: anything glued on after it
+    // (e.g. ":/" typed right after the link) is text, not part of the address
+    const glued = url.match(/^(https?:\/\/[^\s]*\/storage\/v1\/object\/public\/[^\s]*?\.(?:jpe?g|png|gif|webp|avif|bmp|heic))(.+)$/i)
+    if (glued) {
+      url = glued[1]
+      re.lastIndex = start + url.length
+    }
 
     if (start > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, start) })
