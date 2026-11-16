@@ -1,5 +1,6 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
+import { useApp } from '@/contexts/AppContext'
 
 // ── YouTube ──────────────────────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
@@ -71,6 +72,33 @@ function parseContent(text: string): Segment[] {
   return segments
 }
 
+// ── Image with a visible fallback (instead of an empty gap) ──────────────────
+function ImageSegment({ url }: { url: string }) {
+  const { t } = useApp()
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 my-2 px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-brand-600 hover:underline">
+        🖼️ {t.imageLoadFailed}
+      </a>
+    )
+  }
+  return (
+    <div className="my-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="user uploaded image"
+        loading="lazy"
+        className="max-w-full rounded-lg border border-gray-200 dark:border-gray-700"
+        style={{ maxHeight: '480px', objectFit: 'contain' }}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props { content: string; className?: string }
 
@@ -95,18 +123,7 @@ export default function ContentRenderer({ content, className = '' }: Props) {
         }
 
         if (seg.type === 'image') {
-          return (
-            <div key={i} className="my-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={seg.value}
-                alt="user uploaded image"
-                className="max-w-full rounded-lg border border-gray-200 dark:border-gray-700"
-                style={{ maxHeight: '480px', objectFit: 'contain' }}
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
-            </div>
-          )
+          return <ImageSegment key={i} url={seg.value} />
         }
 
         if (seg.type === 'link') {

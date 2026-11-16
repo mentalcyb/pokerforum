@@ -8,6 +8,36 @@ interface Props {
   onInsert: (url: string) => void
 }
 
+const SAFE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+
+async function prepareImage(file: File): Promise<{ blob: Blob; ext: string; type: string } | null> {
+  const safeExt = SAFE_TYPES[file.type]
+  // small, web-friendly images (and animated GIFs) go up untouched
+  if (safeExt && (file.size <= 1.5 * 1024 * 1024 || file.type === 'image/gif')) {
+    return { blob: file, ext: safeExt, type: file.type }
+  }
+  const url = URL.createObjectURL(file)
+  try {
+    const img = new Image()
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); img.src = url })
+    const scale = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+    return blob ? { blob, ext: 'jpg', type: 'image/jpeg' } : null
+  } catch {
+    return null
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 export default function ImageUploader({ userId, onInsert }: Props) {
   const { t } = useApp()
   const [uploading, setUploading] = useState(false)
@@ -16,19 +46,24 @@ export default function ImageUploader({ userId, onInsert }: Props) {
   const supabase = createClient()
 
   async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) { setError(t.imagesOnly); return }
-    if (file.size > 5 * 1024 * 1024) { setError(t.maxFileSize); return }
+    const heic = /\.(heic|heif)$/i.test(file.name)
+    if (!file.type.startsWith('image/') && !heic) { setError(t.imagesOnly); return }
+    if (file.size > 25 * 1024 * 1024) { setError(t.maxFileSize); return }
 
     setError(null)
     setUploading(true)
 
     try {
-      const ext = file.name.split('.').pop()
-      const path = `${userId}/${Date.now()}.${ext}`
+      // Phone photos are often HEIC (browsers can't show them) or huge –
+      // re-encode to a JPEG every browser can display.
+      const prepared = await prepareImage(file)
+      if (!prepared) { setError(t.imageFormatError); return }
+      if (prepared.blob.size > 5 * 1024 * 1024) { setError(t.maxFileSize); return }
+      const path = `${userId}/${Date.now()}.${prepared.ext}`
 
       const { error: upErr } = await supabase.storage
         .from('images')
-        .upload(path, file, { cacheControl: '3600', upsert: false })
+        .upload(path, prepared.blob, { cacheControl: '3600', upsert: false, contentType: prepared.type })
 
       if (upErr) { setError(upErr.message); return }
 
@@ -57,7 +92,7 @@ export default function ImageUploader({ userId, onInsert }: Props) {
 
   return (
     <div className="flex items-center gap-2">
-      <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} className="hidden" />
+      <input ref={inputRef} type="file" accept="image/*,.heic,.heif" onChange={handleChange} className="hidden" />
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
