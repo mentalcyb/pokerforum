@@ -335,6 +335,8 @@ export const translations = {
     uploadImage: 'სურათი',
     uploading: 'იტვირთება...',
     imagesOnly: 'მხოლოდ სურათები',
+    imageFormatError: 'ამ ფორმატის ფოტო ვერ წავიკითხე – აირჩიე JPG ან PNG',
+    imageLoadFailed: 'ფოტო ვერ ჩაიტვირთა – გახსნა',
     maxFileSize: 'მაქსიმუმ 5MB',
     // edit post
     editPost: 'პოსტის ჩასწორება',
@@ -945,6 +947,8 @@ export const translations = {
     uploadImage: 'Image',
     uploading: 'Uploading...',
     imagesOnly: 'Images only',
+    imageFormatError: "Couldn't read this photo format – please choose JPG or PNG",
+    imageLoadFailed: 'Image failed to load – open',
     maxFileSize: 'Max 5MB',
     // edit post
     editPost: 'Edit Post',

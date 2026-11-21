@@ -267,6 +267,22 @@ export default function PostPage() {
     }
   }
 
+  // an image link must stand on its own line, or text typed next to it sticks to the link and breaks the photo
+  function insertImage(url: string) {
+    const ta = textareaRef.current
+    const pos = ta ? ta.selectionStart : replyText.length
+    const before = replyText.slice(0, pos)
+    const after = replyText.slice(ta ? ta.selectionEnd : pos)
+    const pre = before && !before.endsWith('\n') ? '\n' : ''
+    const post = after.startsWith('\n') ? '' : '\n'
+    setReplyText(before + pre + url + post + after)
+    setTimeout(() => {
+      if (!ta) return
+      ta.selectionStart = ta.selectionEnd = (before + pre + url + post).length
+      ta.focus()
+    }, 0)
+  }
+
   function insertIntoEdit(url: string) {
     setEditContent(prev => prev + (prev && !prev.endsWith('\n') ? '\n' : '') + url + '\n')
   }
@@ -488,7 +504,7 @@ export default function PostPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <EmojiPicker onSelect={emoji => insertAtCursor(emoji)} />
-                <ImageUploader userId={user.id} onInsert={insertAtCursor} />
+                <ImageUploader userId={user.id} onInsert={insertImage} />
               </div>
               <button
                 type="submit"
